@@ -1,0 +1,14 @@
+ * documentation (based on python bindings)
+   * Ethumb
+   * Ethumb_Client
+
+ * memory handling:
+   * zero pointer parameters before failing on SAFETY macros (file_get, etc)
+
+ * unit tests, be them in C or Python, covering:
+   * thumbnail generation respect parameters (size, format...)
+   * respect fdo standards (hash, location, etc, uri with spaces...)
+   * server died recovery, just add timeout and kill server before expires
+
+ * examples:
+   * error handling, including reconnection.
