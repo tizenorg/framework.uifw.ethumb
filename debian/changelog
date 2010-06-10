@@ -1,4 +1,12 @@
-ethumb (.48347slp2+3build05) unstable; urgency=low
+ethumb (48347slp2+3build06) unstable; urgency=low
+
+  * Repackaging without .
+  * Git: 165.213.180.234:/git/slp2.0/slp2.0-pkgs/EFL-pkgs/ethumb
+  * Tag: ethumb_48347slp2+3build06
+
+ -- Daniel Juyung Seo <juyung.seo@samsung.com>  Thu, 10 Jun 2010 23:38:51 +0900
+
+ethumb (48347slp2+3build05) unstable; urgency=low
 
   * Repackaging.
   * Git: 165.213.180.234:/git/slp2.0/slp2.0-pkgs/EFL-pkgs/ethumb
