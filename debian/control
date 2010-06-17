@@ -7,9 +7,25 @@ Build-Depends: cdbs, debhelper (>= 6), libevas-dev, libedje-dev, libeina-dev, li
 Standards-Version: 3.8.1
 Homepage: http://www.enlightenment.org
 
-Package: ethumb
+Package: libethumb-svn-01
 Architecture: any
 Depends: ${shlibs:Depends}
 Description: Enlightenment thumbnailing library
  Thumbnailing library meant to replace epsilon.
 
+Package: libethumb-dev
+Section: libdevel
+Architecture: any
+Depends: libethumb-svn-01 (= ${binary:Version}), libevas-dev, libedje-dev, libeina-dev, libecore-dev
+Description: ethumb devel package
+
+Package: libethumb-bin
+Architecture: any
+Depends: ${shlibs:Depends}, libethumb-svn-01 (= ${binary:Version})
+Description: ethumb binary files
+
+Package: libethumb-dbg
+Section: debug
+Architecture: any
+Depends: ${shlibs:Depends}, libethumb-svn-01 (= ${binary:Version})
+Description: ethumb debug package

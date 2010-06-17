@@ -1,0 +1,6 @@
+debian/tmp/usr/include/*
+debian/tmp/usr/lib/libethumb.a
+debian/tmp/usr/lib/libethumb.la
+debian/tmp/usr/lib/libethumb_client.a
+debian/tmp/usr/lib/libethumb_client.la
+debian/tmp/usr/lib/pkgconfig/*.pc
