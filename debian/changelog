@@ -1,10 +1,10 @@
 ethumb (0.1.0+svn.48347slp2+4) unstable; urgency=low
 
-  * Split into several pacakges
+  * Split into several pacakges (by Youmin Ha).
   * Git: 165.213.180.234:/git/slp2.0/slp2.0-pkgs/EFL-pkgs/ethumb
   * Tag: ethumb_0.1.0+svn.48347slp2+4
 
- -- Daniel Juyung Seo <juyung.seo@samsung.com>  Thu, 17 Jun 2010 15:27:04 +0900
+ -- Daniel Juyung Seo <juyung.seo@samsung.com>  Thu, 18 Jun 2010 16:49:04 +0900
 
 ethumb (48347slp2+3build06) unstable; urgency=low
 
