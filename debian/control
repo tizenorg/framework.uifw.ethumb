@@ -3,7 +3,7 @@ Section: x11
 Priority: optional
 Maintainer: Jaehwan Kim <jae.hwan.kim@samsung.com>, Juyung Seo <juyung.seo@samsung.com>
 Original-Maintainer: quaker <quaker66@gmail.com>
-Build-Depends: cdbs, debhelper (>= 6), libevas-dev, libedje-dev, libeina-dev, libecore-dev, pkg-config, libtool
+Build-Depends: cdbs, debhelper (>= 6), libevas-dev, libedje-dev, libeina-dev, libecore-dev, libedbus-dev, pkg-config, libtool
 Standards-Version: 3.8.1
 Homepage: http://www.enlightenment.org
 
@@ -16,7 +16,7 @@ Description: Enlightenment thumbnailing library
 Package: libethumb-dev
 Section: libdevel
 Architecture: any
-Depends: libethumb-svn-01 (= ${binary:Version}), libevas-dev, libedje-dev, libeina-dev, libecore-dev
+Depends: libethumb-svn-01 (= ${binary:Version}), libevas-dev, libedje-dev, libeina-dev, libecore-dev, libedbus-dev,
 Description: ethumb devel package
 
 Package: libethumb-bin
