@@ -1,3 +1,11 @@
+ethumb (0.1.0+svn.48347slp2+5) unstable; urgency=low
+
+  * Fixed build break.
+  * Git: 165.213.180.234:/git/slp2.0/slp2.0-pkgs/EFL-pkgs/ethumb
+  * Tag: ethumb_0.1.0+svn.48347slp2+5
+
+ -- Daniel Juyung Seo <juyung.seo@samsung.com>  Sat, 19 Jun 2010 14:13:13 +0900
+
 ethumb (0.1.0+svn.48347slp2+4) unstable; urgency=low
 
   * Split into several pacakges (by Youmin Ha).
