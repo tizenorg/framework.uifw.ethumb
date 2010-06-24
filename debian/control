@@ -29,8 +29,3 @@ Section: debug
 Architecture: any
 Depends: ${shlibs:Depends}, libethumb-svn-01 (= ${binary:Version})
 Description: ethumb debug package
-
-Package: ethumb
-Architecture: any
-Depends: libethumb-svn-01 (= ${binary:Version}), libethumb-bin (= ${binary:Version}), libethumb-dev (= ${binary:Version})
-Description: ethumb metapacakge (has no contents)
