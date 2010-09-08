@@ -316,6 +316,7 @@ ethumb_free(Ethumb *ethumb)
    if (ethumb->frame)
      _ethumb_frame_free(ethumb->frame);
    ethumb_file_free(ethumb);
+   evas_object_del(ethumb->o);
    ecore_evas_free(ethumb->ee);
    eina_stringshare_del(ethumb->thumb_dir);
    eina_stringshare_del(ethumb->category);
@@ -1232,7 +1233,7 @@ _ethumb_image_load(Ethumb *e)
    return 1;
 }
 
-static int
+static Eina_Bool
 _ethumb_finished_idler_cb(void *data)
 {
    Ethumb *e = data;
@@ -1245,7 +1246,7 @@ _ethumb_finished_idler_cb(void *data)
    e->cb_data = NULL;
    e->cb_data_free = NULL;
 
-   return 0;
+   return EINA_FALSE;
 }
 
 void
