@@ -1,4 +1,4 @@
-AC_INIT([ethumb], [0.1], [enlightenment-devel@lists.sourceforge.net])
+AC_INIT([ethumb], [0.1.0], [enlightenment-devel@lists.sourceforge.net])
 AC_PREREQ([2.52])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_MACRO_DIR([m4])
@@ -6,8 +6,8 @@ AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AC_ISC_POSIX
 
-AM_INIT_AUTOMAKE(1.6 dist-bzip2)
-AM_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE([1.6 dist-bzip2])
+AM_CONFIG_HEADER([config.h])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 _XTERM_COLORS
 
@@ -29,6 +29,7 @@ VMAJ=`echo $PACKAGE_VERSION | awk -F. '{printf("%s", $1);}'`
 VMIN=`echo $PACKAGE_VERSION | awk -F. '{printf("%s", $2);}'`
 version_info=`expr $VMAJ + $VMIN`
 AC_SUBST(version_info)
+AC_SUBST(VMAJ)
 
 #themesdir="${datadir}/ethumb/data/frames"
 #AC_SUBST(themesdir)
@@ -71,15 +72,15 @@ AC_SUBST(EFL_ETHUMB_BUILD)
 AC_SUBST(EFL_ETHUMB_CLIENT_BUILD)
 AC_SUBST(lt_enable_auto_import)
 
-PKG_CHECK_MODULES(EINA, [eina-0])
-PKG_CHECK_MODULES(EVAS, [evas])
-PKG_CHECK_MODULES(ECORE, [ecore])
-PKG_CHECK_MODULES(ECORE_EVAS, [ecore-evas])
-PKG_CHECK_MODULES(ECORE_FILE, [ecore-file])
-PKG_CHECK_MODULES(EDJE, [edje])
+PKG_CHECK_MODULES(EINA, [eina >= 1.0.0])
+PKG_CHECK_MODULES(EVAS, [evas >= 1.0.0])
+PKG_CHECK_MODULES(ECORE, [ecore >= 1.0.0])
+PKG_CHECK_MODULES(ECORE_EVAS, [ecore-evas >= 1.0.0])
+PKG_CHECK_MODULES(ECORE_FILE, [ecore-file >= 1.0.0 ])
+PKG_CHECK_MODULES(EDJE, [edje >= 1.0.0])
 
-requirement_ethumb="eina-0 evas ecore ecore-evas ecore-file edje"
-requirement_ethumb_client="ethumb edbus"
+requirement_ethumb="eina >= 1.0.0 evas >= 1.0.0 ecore >= 1.0.0 ecore-evas >= 1.0.0 ecore-file >= 1.0.0 edje >= 1.0.0"
+requirement_ethumb_client="ethumb edbus >= 1.0.0"
 
 AM_CONDITIONAL(HAVE_EMOTION, false)
 define([CHECK_MODULE_EMOTION],

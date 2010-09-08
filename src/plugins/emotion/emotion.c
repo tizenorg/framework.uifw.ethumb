@@ -11,6 +11,7 @@
 #include <Eet.h>
 #include <Ecore_File.h>
 #include <Evas.h>
+#include <Ecore.h>
 #include <Edje.h>
 #include <Edje_Edit.h>
 #include <Emotion.h>
@@ -177,7 +178,7 @@ _finish_thumb_generation(struct _emotion_plugin *_plugin, int success)
    ethumb_finished_callback_call(_plugin->e, r);
 }
 
-static int
+static Eina_Bool
 _frame_grab_single(void *data)
 {
    struct _emotion_plugin *_plugin = data;
@@ -191,7 +192,8 @@ _frame_grab_single(void *data)
      }
 
    p = emotion_object_position_get(_plugin->video);
-   if (p < _plugin->pi)
+//   if (p < _plugin->pi)
+   if (p <= 0.0)
      return EINA_TRUE;
 
    DBG("saving static thumbnail at position=%f (intended=%f)", p, _plugin->pi);
@@ -203,12 +205,13 @@ _frame_grab_single(void *data)
    emotion_object_play_set(_plugin->video, 0);
    evas_object_del(_plugin->video);
    free(_plugin);
+   
    ethumb_finished_callback_call(e, 1);
 
    return EINA_FALSE;
 }
 
-static int
+static Eina_Bool
 _frame_grab(void *data)
 {
    struct _emotion_plugin *_plugin = data;

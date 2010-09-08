@@ -36,12 +36,14 @@
 
 #include "ethumbd_private.h"
 
-#define DBG(...) EINA_LOG_DBG(__VA_ARGS__)
-#define INF(...) EINA_LOG_INFO(__VA_ARGS__)
-#define WRN(...) EINA_LOG_WARN(__VA_ARGS__)
-#define ERR(...) EINA_LOG_ERR(__VA_ARGS__)
+#define DBG(...) EINA_LOG_DOM_DBG(_log_domain, __VA_ARGS__)
+#define INF(...) EINA_LOG_DOM_INFO(_log_domain, __VA_ARGS__)
+#define WRN(...) EINA_LOG_DOM_WARN(_log_domain, __VA_ARGS__)
+#define ERR(...) EINA_LOG_DOM_ERR(_log_domain, __VA_ARGS__)
 
 #define NETHUMBS 100
+
+static int _log_domain = -1;
 
 struct _Ethumbd_Child
 {
@@ -218,7 +220,6 @@ _ec_op_generated_cb(void *data, Ethumb *e, Eina_Bool success)
    const char *thumb_path, *thumb_key;
    int size_path, size_key, size_cmd;
 
-   fprintf(stderr, "thumbnail generated!");
    DBG("thumb generated!");
    ethumb_thumb_path_get(e, &thumb_path, &thumb_key);
 
@@ -640,7 +641,7 @@ _ec_op_setup(struct _Ethumbd_Child *ec)
    return 1;
 }
 
-static int
+static Eina_Bool
 _ec_fd_handler(void *data, Ecore_Fd_Handler *fd_handler)
 {
    struct _Ethumbd_Child *ec = data;
@@ -710,6 +711,18 @@ main(int argc, const char *argv[])
 
    ethumb_init();
 
+   if (_log_domain < 0)
+     {
+	_log_domain = eina_log_domain_register("ethumbd_child", NULL);
+
+	if (_log_domain < 0)
+	  {
+	     EINA_LOG_CRIT("could not register log domain 'ethumbd_child'");
+	     ethumb_shutdown();
+	     return 1;
+	  }
+     }
+
    ec = _ec_new();
 
    _ec_setup(ec);
@@ -720,6 +733,11 @@ main(int argc, const char *argv[])
 
    _ec_free(ec);
 
+   if (_log_domain >= 0)
+     {
+	eina_log_domain_unregister(_log_domain);
+	_log_domain = -1;
+     }
    ethumb_shutdown();
 
    return 0;
