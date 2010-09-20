@@ -1,3 +1,11 @@
+ethumb (1.0.0+svn.51480slp2+4) unstable; urgency=low
+
+  * repackaging
+  * Git: 165.213.180.234:/git/slp/pkgs/ethumb
+  * Tag: ethumb_1.0.0+svn.51480slp2+4
+
+ -- ChunEon Parkm <chuneon.park@samsung.com>  Tue, 21 Sep 2010 01:23:58 +0900
+
 ethumb (1.0.0+svn.51480slp2+3) unstable; urgency=low
 
   * add as-needed
