@@ -2,6 +2,7 @@ Source: ethumb
 Section: x11
 Priority: optional
 Maintainer: Jaehwan Kim <jae.hwan.kim@samsung.com>, Juyung Seo <juyung.seo@samsung.com>
+Uploaders: Chuneon Park <chuneon.park@samsung.com>
 Original-Maintainer: quaker <quaker66@gmail.com>
 Build-Depends: cdbs, debhelper (>= 6), libevas-dev, libedje-dev, libeina-dev, libecore-dev, libedbus-dev, pkg-config, libtool
 Standards-Version: 3.8.1
