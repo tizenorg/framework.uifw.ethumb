@@ -3,19 +3,19 @@
  *
  * Copyright (C) 2009 by ProFUSION embedded systems
  *
- * This library is free software; you can redistribute it and/or  
- * modify it under the terms of the GNU Lesser General Public  
- * License as published by the Free Software Foundation; either  
- * version 2.1 of the License, or (at your option) any later version. 
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,  
- * but WITHOUT ANY WARRANTY; without even the implied warranty of  
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- * Lesser General Public License for more details. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public  
- * License along with this library;  
- * if not, see <http://www.gnu.org/licenses/>. 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library;
+ * if not, see <http://www.gnu.org/licenses/>.
  *
  * @author Rafael Antognolli <antognolli@profusion.mobi>
  */
@@ -52,6 +52,10 @@ void *alloca (size_t);
 #include <dlfcn.h>
 #include <ctype.h>
 
+#ifdef HAVE_XATTR
+# include <sys/xattr.h>
+#endif
+
 #ifndef PATH_MAX
 # define PATH_MAX 4096
 #endif
@@ -68,6 +72,10 @@ void *alloca (size_t);
 #include "ethumb_private.h"
 #include "Ethumb_Plugin.h"
 #include "md5.h"
+
+#ifdef HAVE_LIBEXIF
+  #include <libexif/exif-data.h>
+#endif
 
 static int _log_dom = -1;
 #define DBG(...) EINA_LOG_DOM_DBG(_log_dom, __VA_ARGS__)
@@ -224,6 +232,7 @@ ethumb_new(void)
    /* IF CHANGED, UPDATE DOCS in (Ethumb.c, Ethumb_Client.c, python...)!!! */
    ethumb->tw = THUMB_SIZE_NORMAL;
    ethumb->th = THUMB_SIZE_NORMAL;
+   ethumb->orientation = ETHUMB_THUMB_ORIENT_ORIGINAL;
    ethumb->crop_x = 0.5;
    ethumb->crop_y = 0.5;
    ethumb->quality = 80;
@@ -239,6 +248,7 @@ ethumb_new(void)
    if (!e)
      {
 	ERR("could not create ecore evas buffer");
+        free(ethumb);
 	return NULL;
      }
 
@@ -254,8 +264,8 @@ ethumb_new(void)
 	return NULL;
      }
 
-   sub_ee = evas_object_data_get(o, "Ecore_Evas");
-   sub_e = ecore_evas_get(sub_ee);
+   sub_ee = ecore_evas_object_ecore_evas_get(o);
+   sub_e = ecore_evas_object_evas_get(o);
 
    evas_image_cache_set(sub_e, 0);
    evas_font_cache_set(sub_e, 0);
@@ -345,6 +355,7 @@ ethumb_thumb_fdo_set(Ethumb *e, Ethumb_Thumb_FDO_Size s)
 
    e->format = ETHUMB_THUMB_FDO;
    e->aspect = ETHUMB_THUMB_KEEP_ASPECT;
+   e->orientation = ETHUMB_THUMB_ORIENT_ORIGINAL;
    _ethumb_frame_free(e->frame);
    e->frame = NULL;
    eina_stringshare_del(e->thumb_dir);
@@ -410,6 +421,31 @@ ethumb_thumb_aspect_get(const Ethumb *e)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, 0);
    return e->aspect;
+}
+
+EAPI void
+ethumb_thumb_orientation_set(Ethumb *e, Ethumb_Thumb_Orientation o)
+{
+   EINA_SAFETY_ON_NULL_RETURN(e);
+   EINA_SAFETY_ON_FALSE_RETURN(o == ETHUMB_THUMB_ORIENT_NONE ||
+			       o == ETHUMB_THUMB_ROTATE_90_CW ||
+			       o == ETHUMB_THUMB_ROTATE_180 ||
+			       o == ETHUMB_THUMB_ROTATE_90_CCW ||
+			       o == ETHUMB_THUMB_FLIP_HORIZONTAL ||
+			       o == ETHUMB_THUMB_FLIP_VERTICAL ||
+			       o == ETHUMB_THUMB_FLIP_TRANSPOSE ||
+			       o == ETHUMB_THUMB_FLIP_TRANSVERSE ||
+			       o == ETHUMB_THUMB_ORIENT_ORIGINAL);
+
+   DBG("ethumb=%p, orientation=%d", e, o);
+   e->orientation = o;
+}
+
+EAPI Ethumb_Thumb_Orientation
+ethumb_thumb_orientation_get(const Ethumb *e)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, 0);
+   return e->orientation;
 }
 
 EAPI void
@@ -647,12 +683,12 @@ ethumb_video_start_get(const Ethumb *e)
 }
 
 EAPI void
-ethumb_video_time_set(Ethumb *e, float time)
+ethumb_video_time_set(Ethumb *e, float t)
 {
    EINA_SAFETY_ON_NULL_RETURN(e);
 
-   DBG("ethumb=%p, video_start=%f", e, time);
-   e->video.time = time;
+   DBG("ethumb=%p, video_start=%f", e, t);
+   e->video.time = t;
 }
 
 EAPI float
@@ -739,6 +775,9 @@ ethumb_file_set(Ethumb *e, const char *path, const char *key)
    char buf[PATH_MAX];
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, 0);
 
+   eina_stringshare_replace(&e->thumb_path, NULL);
+   eina_stringshare_replace(&e->thumb_key, NULL);
+
    DBG("ethumb=%p, path=%s, key=%s", e, path ? path : "", key ? key : "");
    if (path && access(path, R_OK))
      {
@@ -749,8 +788,6 @@ ethumb_file_set(Ethumb *e, const char *path, const char *key)
    path = _ethumb_build_absolute_path(path, buf);
    eina_stringshare_replace(&e->src_path, path);
    eina_stringshare_replace(&e->src_key, key);
-   eina_stringshare_replace(&e->thumb_path, NULL);
-   eina_stringshare_replace(&e->thumb_key, NULL);
 
    return EINA_TRUE;
 }
@@ -792,6 +829,27 @@ _ethumb_generate_hash(const char *file)
   char *t;
   const unsigned char *c;
 
+#ifdef HAVE_XATTR
+  ssize_t length;
+
+  length = getxattr(file, "user.e.md5", NULL, 0);
+
+  if (length > 0)
+    {
+       char *tmp;
+
+       tmp = alloca(length);
+       length = getxattr(file, "user.e.md5", tmp, length);
+
+       /* check if we have at least something that look like a md5 hash */
+       if (length > 0 && (length == MD5_HASHBYTES * 2 + 1))
+         {
+            tmp[length] = '\0';
+            return eina_stringshare_add(tmp);
+         }
+    }
+#endif
+
 #define _check_uri_char(c) \
   ((c) >= 32 && (c) < 128 && (ACCEPTABLE_URI_CHARS[(c) - 32] & 0x08))
 
@@ -826,6 +884,10 @@ _ethumb_generate_hash(const char *file)
       md5out[2 * n + 1] = hex[hash[n] & 0x0f];
     }
   md5out[2 * n] = '\0';
+
+#ifdef HAVE_XATTR
+  setxattr(file, "user.e.md5", md5out, 2 * n + 1, 0);
+#endif
 
   DBG("md5=%s, file=%s", md5out, file);
   return eina_stringshare_add(md5out);
@@ -892,7 +954,6 @@ _ethumb_file_generate_path(Ethumb *e)
    const char *ext;
    int fdo_format;
 
-
    fdo_format = _ethumb_file_check_fdo(e);
 
    if (e->thumb_dir)
@@ -924,7 +985,6 @@ _ethumb_file_generate_path(Ethumb *e)
      ext = "jpg";
    else
      ext = "eet";
-
 
    fullname = ecore_file_realpath(e->src_path);
    hash = _ethumb_generate_hash(fullname);
@@ -1171,12 +1231,135 @@ ethumb_image_save(Ethumb *e)
    return EINA_TRUE;
 }
 
+static void
+_ethumb_image_orient(Ethumb *e, int orientation)
+{
+   Evas_Object *img = e->img, *tmp;
+   unsigned int *data, *data2, *to, *from, *p1, *p2, pt;
+   int x, y, w, hw, iw, ih, tw, th;
+   const char *file, *key;
+
+   evas_object_image_size_get(img, &iw, &ih);
+   evas_object_image_load_size_get(img, &tw, &th);
+   evas_object_image_file_get(img, &file, &key);
+   data = evas_object_image_data_get(img, 1);
+
+   switch (orientation)
+     {
+      case ETHUMB_THUMB_FLIP_HORIZONTAL:
+	 for (y = 0; y < ih; y++)
+	   {
+	      p1 = data + (y * iw);
+	      p2 = data + ((y + 1) * iw) - 1;
+	      for (x = 0; x < (iw >> 1); x++)
+		{
+		   pt = *p1;
+		   *p1 = *p2;
+		   *p2 = pt;
+		   p1++;
+		   p2--;
+		}
+	   }
+	 evas_object_image_data_set(img, data);
+	 evas_object_image_data_update_add(img, 0, 0, iw, ih);
+	 return;
+      case ETHUMB_THUMB_FLIP_VERTICAL:
+	 for (y = 0; y < (ih >> 1); y++)
+	   {
+	      p1 = data + (y * iw);
+	      p2 = data + ((ih - 1 - y) * iw);
+	      for (x = 0; x < iw; x++)
+		{
+		   pt = *p1;
+		   *p1 = *p2;
+		   *p2 = pt;
+		   p1++;
+		   p2++;
+	        }
+	   }
+	 evas_object_image_data_set(img, data);
+	 evas_object_image_data_update_add(img, 0, 0, iw, ih);
+	 return;
+      case ETHUMB_THUMB_ROTATE_180:
+	 hw = iw * ih;
+	 x = (hw / 2);
+	 p1 = data;
+	 p2 = data + hw - 1;
+	 for (; --x > 0;)
+	   {
+	      pt = *p1;
+	      *p1 = *p2;
+	      *p2 = pt;
+	      p1++;
+	      p2--;
+	   }
+	 evas_object_image_data_set(img, data);
+	 evas_object_image_data_update_add(img, 0, 0, iw, ih);
+	 return;
+     }
+
+   tmp = evas_object_image_add(evas_object_evas_get(img));
+   evas_object_image_load_size_set(tmp, tw, th);
+   evas_object_image_file_set(tmp, file, key);
+   data2 = evas_object_image_data_get(tmp, 0);
+
+   w = ih;
+   ih = iw;
+   iw = w;
+   hw = w * ih;
+
+   evas_object_image_size_set(img, iw, ih);
+   data = evas_object_image_data_get(img, 1);
+
+   switch (orientation)
+     {
+      case ETHUMB_THUMB_FLIP_TRANSPOSE:
+	 to = data;
+	 hw = -hw + 1;
+	 break;
+      case ETHUMB_THUMB_FLIP_TRANSVERSE:
+	 to = data + hw - 1;
+	 w = -w;
+	 hw = hw - 1;
+	 break;
+      case ETHUMB_THUMB_ROTATE_90_CW:
+	 to = data + w - 1;
+	 hw = -hw - 1;
+	 break;
+      case ETHUMB_THUMB_ROTATE_90_CCW:
+	 to = data + hw - w;
+	 w = -w;
+	 hw = hw + 1;
+	 break;
+      default:
+	 ERR("unknown orient %d", orientation);
+	 evas_object_del(tmp);
+	 evas_object_image_data_set(img, data); // give it back
+	 return;
+     }
+   from = data2;
+   for (x = iw; --x >= 0;)
+     {
+        for (y = ih; --y >= 0;)
+          {
+             *to = *from;
+             from++;
+             to += w;
+          }
+        to += hw;
+     }
+   evas_object_del(tmp);
+   evas_object_image_data_set(img, data);
+   evas_object_image_data_update_add(img, 0, 0, iw, ih);
+}
+
 static int
 _ethumb_image_load(Ethumb *e)
 {
    int error;
    Evas_Coord w, h, ww, hh, fx, fy, fw, fh;
    Evas_Object *img;
+   int orientation = ETHUMB_THUMB_ORIENT_NONE;
 
    img = e->img;
 
@@ -1199,6 +1382,54 @@ _ethumb_image_load(Ethumb *e)
 	ERR("could not load image '%s': %d", e->src_path, error);
 	return 0;
      }
+
+   if (e->orientation == ETHUMB_THUMB_ORIENT_ORIGINAL)
+      {
+#ifdef HAVE_LIBEXIF
+	 ExifData  *exif = exif_data_new_from_file(e->src_path);
+	 ExifEntry *entry = NULL;
+	 ExifByteOrder bo;
+	 int o = 0;
+
+	 if (exif)
+	   {
+	      entry = exif_data_get_entry(exif, EXIF_TAG_ORIENTATION);
+	      if (entry)
+		{
+		   bo = exif_data_get_byte_order(exif);
+		   o = exif_get_short(entry->data, bo);
+		}
+	      exif_data_free(exif);
+	      switch (o)
+		{
+		 case 2:
+		    orientation = ETHUMB_THUMB_FLIP_HORIZONTAL;
+		    break;
+		 case 3:
+		    orientation = ETHUMB_THUMB_ROTATE_180;
+		    break;
+		 case 4:
+		    orientation = ETHUMB_THUMB_FLIP_VERTICAL;
+		    break;
+		 case 5:
+		    orientation = ETHUMB_THUMB_FLIP_TRANSPOSE;
+		    break;
+		 case 6:
+		    orientation = ETHUMB_THUMB_ROTATE_90_CW;
+		    break;
+		 case 7:
+		    orientation = ETHUMB_THUMB_FLIP_TRANSVERSE;
+		    break;
+		 case 8:
+		    orientation = ETHUMB_THUMB_ROTATE_90_CCW;
+		    break;
+		}
+	   }
+#endif
+   }
+
+   if (orientation != ETHUMB_THUMB_ORIENT_NONE)
+     _ethumb_image_orient(e, orientation);
 
    evas_object_image_size_get(img, &w, &h);
    if ((w <= 0) || (h <= 0))
@@ -1283,18 +1514,21 @@ ethumb_generate(Ethumb *e, Ethumb_Generate_Cb finished_cb, const void *data, Ein
      {
 	ERR("no file set.");
 	ethumb_finished_callback_call(e, 0);
-	return EINA_TRUE;
+	return EINA_FALSE;
      }
 
    r = _ethumb_plugin_generate(e);
    if (r)
-     return EINA_TRUE;
+     {
+        ethumb_finished_callback_call(e, r);
+        return EINA_TRUE;
+     }
 
    if (!_ethumb_image_load(e))
      {
 	ERR("could not load input image.");
 	ethumb_finished_callback_call(e, 0);
-	return EINA_TRUE;
+	return EINA_FALSE;
      }
 
    r = ethumb_image_save(e);
@@ -1333,7 +1567,7 @@ ethumb_exists(Ethumb *e)
    return r;
 }
 
-Evas *
+EAPI Evas *
 ethumb_evas_get(const Ethumb *e)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
@@ -1341,10 +1575,202 @@ ethumb_evas_get(const Ethumb *e)
    return e->sub_e;
 }
 
-Ecore_Evas *
+EAPI Ecore_Evas *
 ethumb_ecore_evas_get(const Ethumb *e)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
 
    return e->sub_ee;
+}
+
+EAPI Ethumb *
+ethumb_dup(const Ethumb *e)
+{
+   Ecore_Evas *ee;
+   Ecore_Evas *sub_ee;
+   Evas *ev;
+   Evas *sub_ev;
+   Evas_Object *o;
+   Evas_Object *img;
+   Ethumb *r;
+
+   r = malloc(sizeof (Ethumb));
+   if (!r) return NULL;
+
+   memcpy(r, e, sizeof (Ethumb));
+
+   r->thumb_dir = eina_stringshare_ref(e->thumb_dir);
+   r->category = eina_stringshare_ref(e->category);
+   r->src_path = eina_stringshare_ref(e->src_path);
+   r->src_key = eina_stringshare_ref(e->src_key);
+   r->thumb_path = eina_stringshare_ref(e->thumb_path);
+   r->thumb_key = eina_stringshare_ref(e->thumb_key);
+
+   ee = ecore_evas_buffer_new(1, 1);
+   ev = ecore_evas_get(ee);
+   if (!ev)
+     {
+        ERR("could not create ecore evas buffer");
+        free(r);
+        return NULL;
+     }
+
+   evas_image_cache_set(ev, 0);
+   evas_font_cache_set(ev, 0);
+
+   o = ecore_evas_object_image_new(ee);
+   if (!o)
+     {
+        ERR("could not create sub ecore evas buffer");
+        ecore_evas_free(ee);
+        free(r);
+        return NULL;
+     }
+
+   sub_ee = ecore_evas_object_ecore_evas_get(o);
+   sub_ev = ecore_evas_object_evas_get(o);
+
+   evas_image_cache_set(sub_ev, 0);
+   evas_font_cache_set(sub_ev, 0);
+
+   img = evas_object_image_add(sub_ev);
+   if (!img)
+     {
+        ERR("could not create source objects.");
+        ecore_evas_free(ee);
+        free(r);
+        return NULL;
+     }
+
+   r->ee = ee;
+   r->sub_ee = sub_ee;
+   r->e = ev;
+   r->sub_e = sub_ev;
+   r->o = o;
+   r->img = img;
+
+   r->frame = NULL;
+   r->finished_idler = NULL;
+   r->finished_cb = NULL;
+   r->cb_data = NULL;
+   r->cb_data_free = NULL;
+   r->cb_result = 0;
+
+   return r;
+}
+
+#define CHECK_DELTA(Param)                      \
+  if (e1->Param != e2->Param)                   \
+    return EINA_TRUE;
+
+EAPI Eina_Bool
+ethumb_cmp(const Ethumb *e1, const Ethumb *e2)
+{
+   CHECK_DELTA(thumb_dir);
+   CHECK_DELTA(category);
+   CHECK_DELTA(tw);
+   CHECK_DELTA(th);
+   CHECK_DELTA(format);
+   CHECK_DELTA(aspect);
+   CHECK_DELTA(orientation);
+   CHECK_DELTA(crop_x);
+   CHECK_DELTA(crop_y);
+   CHECK_DELTA(quality);
+   CHECK_DELTA(compress);
+   CHECK_DELTA(rw);
+   CHECK_DELTA(rh);
+   CHECK_DELTA(video.start);
+   CHECK_DELTA(video.time);
+   CHECK_DELTA(video.interval);
+   CHECK_DELTA(video.ntimes);
+   CHECK_DELTA(video.fps);
+   CHECK_DELTA(document.page);
+
+   return EINA_FALSE;
+}
+
+EAPI unsigned int
+ethumb_length(__UNUSED__ const void *key)
+{
+   return sizeof (Ethumb);
+}
+
+#define CMP_PARAM(Param)			\
+  if (e1->Param != e2->Param)			\
+    return e1->Param - e2->Param;
+
+EAPI int
+ethumb_key_cmp(const void *key1, __UNUSED__ int key1_length,
+               const void *key2, __UNUSED__ int key2_length)
+{
+   const Ethumb *e1 = key1;
+   const Ethumb *e2 = key2;
+
+   CMP_PARAM(thumb_dir);
+   CMP_PARAM(category);
+   CMP_PARAM(thumb_dir);
+   CMP_PARAM(category);
+   CMP_PARAM(tw);
+   CMP_PARAM(th);
+   CMP_PARAM(format);
+   CMP_PARAM(aspect);
+   CMP_PARAM(orientation);
+   CMP_PARAM(crop_x);
+   CMP_PARAM(crop_y);
+   CMP_PARAM(quality);
+   CMP_PARAM(compress);
+   CMP_PARAM(rw);
+   CMP_PARAM(rh);
+   CMP_PARAM(video.start);
+   CMP_PARAM(video.time);
+   CMP_PARAM(video.interval);
+   CMP_PARAM(video.ntimes);
+   CMP_PARAM(video.fps);
+   CMP_PARAM(document.page);
+   CMP_PARAM(src_path);
+   CMP_PARAM(src_key);
+
+   return 0;
+}
+
+#undef CMP_PARAM
+
+#define HASH_PARAM_I(Param) r ^= eina_hash_int32((unsigned int*) &e->Param, 0);
+#ifdef __LP64__
+# define HASH_PARAM_P(Param) r ^= eina_hash_int64((unsigned long int*) &e->Param, 0);
+#else
+# define HASH_PARAM_P(Param) r ^= eina_hash_int32((unsigned int*) &e->Param, 0);
+#endif
+#define HASH_PARAM_D(Param) r ^= eina_hash_int64((unsigned long int*)&e->Param, 0);
+#define HASH_PARAM_F(Param) r ^= eina_hash_int32((unsigned int*) &e->Param, 0);
+
+EAPI int
+ethumb_hash(const void *key, int key_length)
+{
+   const Ethumb *e = key;
+   int r = 0;
+
+   HASH_PARAM_P(thumb_dir);
+   HASH_PARAM_P(category);
+   HASH_PARAM_I(tw);
+   HASH_PARAM_I(th);
+   HASH_PARAM_I(format);
+   HASH_PARAM_I(aspect);
+   HASH_PARAM_I(orientation);
+   HASH_PARAM_F(crop_x);
+   HASH_PARAM_F(crop_y);
+   HASH_PARAM_I(quality);
+   HASH_PARAM_I(compress);
+   HASH_PARAM_P(src_path);
+   HASH_PARAM_P(src_key);
+   HASH_PARAM_I(rw);
+   HASH_PARAM_I(rh);
+   HASH_PARAM_D(video.start);
+   HASH_PARAM_D(video.time);
+   HASH_PARAM_D(video.interval);
+   HASH_PARAM_I(video.ntimes);
+   HASH_PARAM_I(video.fps);
+   HASH_PARAM_I(document.page);
+
+   return r;
 }

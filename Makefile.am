@@ -11,10 +11,9 @@ MAINTAINERCLEANFILES = \
 	ltmain.sh \
 	missing
 
-EXTRA_DIST = m4/Makefile.in \
-	README \
-	AUTHORS \
-	COPYING
+EXTRA_DIST = \
+autogen.sh  \
+ethumb.spec
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = ethumb.pc
@@ -23,8 +22,6 @@ pkgconfig_DATA = ethumb.pc
 if USE_MODULE_ETHUMBD
 
 pkgconfig_DATA += ethumb_client.pc
-## FIXME: this breaks "make distcheck" as this installs somethnig outside of
-## the prefix. try make distcheck (as a user)
 servicedir = $(dbusservicedir)
 service_DATA = org.enlightenment.Ethumb.service
 

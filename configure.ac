@@ -1,4 +1,25 @@
-AC_INIT([ethumb], [0.1.0], [enlightenment-devel@lists.sourceforge.net])
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+m4_define([v_maj], [0])
+m4_define([v_min], [1])
+m4_define([v_mic], [1])
+m4_define([v_rev], m4_esyscmd([(svnversion "${SVN_REPO_PATH:-.}" | grep -v export || echo 0) | awk -F : '{printf("%s\n", $1);}' | tr -d ' :MSP\n']))
+m4_if(v_rev, [0], [m4_define([v_rev], m4_esyscmd([git log 2> /dev/null | (grep -m1 git-svn-id || echo 0) | sed -e 's/.*@\([0-9]*\).*/\1/' | tr -d '\n']))])
+##--   When released, remove the dnl on the below line
+dnl m4_undefine([v_rev])
+##--   When doing snapshots - change soname. remove dnl on below line
+m4_define([relname], [ver-pre-svn-09])
+m4_define([v_rel], [-release relname])
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+m4_ifdef([v_rev], [m4_define([v_ver], [v_maj.v_min.v_mic.v_rev])],
+[m4_define([v_ver], [v_maj.v_min.v_mic])])
+m4_define([lt_rev], m4_eval(v_maj + v_min))
+m4_define([lt_cur], v_mic)
+m4_define([lt_age], v_min)
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+
+AC_INIT([ethumb], [v_ver], [enlightenment-devel@lists.sourceforge.net])
 AC_PREREQ([2.52])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_MACRO_DIR([m4])
@@ -6,10 +27,38 @@ AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AC_ISC_POSIX
 
+AC_CONFIG_HEADERS([config.h])
+AH_TOP([
+#ifndef EFL_CONFIG_H__
+#define EFL_CONFIG_H__
+])
+AH_BOTTOM([
+#endif /* EFL_CONFIG_H__ */
+])
+
 AM_INIT_AUTOMAKE([1.6 dist-bzip2])
-AM_CONFIG_HEADER([config.h])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 _XTERM_COLORS
+
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+m4_ifdef([v_rev], , [m4_define([v_rev], [0])])
+m4_ifdef([v_rel], , [m4_define([v_rel], [])])
+AC_DEFINE_UNQUOTED(VERS_MAJ, [v_maj], [Major version])
+AC_DEFINE_UNQUOTED(VERS_MIN, [v_min], [Minor version])
+AC_DEFINE_UNQUOTED(VERS_MIC, [v_mic], [Micro version])
+AC_DEFINE_UNQUOTED(VERS_REV, [v_rev], [Revison])
+version_info="lt_rev:lt_cur:lt_age"
+release_info="v_rel"
+AC_SUBST(version_info)
+AC_SUBST(release_info)
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
+VMAJ=v_maj
+AC_SUBST(VMAJ)
+
+dnl we just have set the version info, then:
+AC_SUBST(version_info)
 
 AC_PROG_CC
 AM_PROG_CC_STDC
@@ -78,6 +127,7 @@ PKG_CHECK_MODULES(ECORE, [ecore >= 1.0.0])
 PKG_CHECK_MODULES(ECORE_EVAS, [ecore-evas >= 1.0.0])
 PKG_CHECK_MODULES(ECORE_FILE, [ecore-file >= 1.0.0 ])
 PKG_CHECK_MODULES(EDJE, [edje >= 1.0.0])
+EFL_WITH_BIN([edje], [edje-cc], [edje_cc])
 
 requirement_ethumb="eina >= 1.0.0 evas >= 1.0.0 ecore >= 1.0.0 ecore-evas >= 1.0.0 ecore-file >= 1.0.0 edje >= 1.0.0"
 requirement_ethumb_client="ethumb edbus >= 1.0.0"
@@ -121,13 +171,58 @@ if $USE_MODULE_ETHUMBD ; then
                     ]
                    )
 fi
+AC_ARG_ENABLE([libexif],
+        [AC_HELP_STRING([--disable-libexif], [disable libexif support. Default is enabled.])],
+        [
+         if test "x${enableval}" = "xyes" ; then
+            _iv_enable_libexif="yes"
+         else
+            _iv_enable_libexif="no"
+         fi
+        ],
+        [_iv_enable_libexif="yes"]
+)
+
+AC_MSG_CHECKING([whether libexif is built])
+AC_MSG_RESULT([${_iv_enable_libexif}])
+
+HAVE_LIBEXIF="no"
+
+if test "x${_iv_enable_libexif}" = "xyes" ; then
+        AC_ETH_CHECK_PKG(LIBEXIF, libexif)
+fi
+
+AM_CONDITIONAL(HAVE_LIBEXIF, test $HAVE_LIBEXIF = yes)
+AC_SUBST(HAVE_LIBEXIF)
+
+AC_COMPILE_IFELSE(
+   [AC_LANG_PROGRAM(
+       [[
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
+       ]],
+       [[
+size_t tmp = listxattr("/", NULL, 0);
+tmp = getxattr("/", "user.ethumb.md5", NULL, 0);
+setxattr("/", "user.ethumb.md5", NULL, 0, 0);
+       ]])],
+    [
+      AC_DEFINE(HAVE_XATTR, 1, [Define to 1 if you have 'listxattr', 'setxattr' and 'getxattr'])
+      have_xattr="yes"
+    ],
+    [have_xattr="no"])
+
+AC_MSG_CHECKING([for Xattr])
+AC_MSG_RESULT([${have_xattr}])
 
 AC_SUBST(requirement_ethumb)
 AC_SUBST(requirement_ethumb_client)
 AC_SUBST(dbusservicedir)
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
 ethumb.pc
+ethumb.spec
 ethumb_client.pc
 org.enlightenment.Ethumb.service
 Makefile
@@ -144,6 +239,8 @@ data/frames/Makefile
 m4/Makefile
 doc/Makefile
 ])
+
+AC_OUTPUT
 
 txt_strip() {
         echo "[$]@" | sed -e 's/^[[ \t]]*\([[^ \t]]*\)[[ \t]]*$/\1/g'
@@ -172,6 +269,7 @@ Summary:
 
 Configuration Options Summary:
 
+ * use xattr........: ${have_xattr}
  * maximum log level: ${with_max_log_level}
  * documentation....: ${build_doc}
 

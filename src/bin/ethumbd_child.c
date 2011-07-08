@@ -3,20 +3,20 @@
  *
  * Copyright (C) 2009 by ProFUSION embedded systems
  *
- * This library is free software; you can redistribute it and/or  
- * modify it under the terms of the GNU Lesser General Public  
- * License as published by the Free Software Foundation; either  
- * version 2.1 of the License, or (at your option) any later version.        
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This library is free software; you can redistribute it and/or  
- * modify it under the terms of the GNU Lesser General Public  
- * License as published by the Free Software Foundation; either  
- * version 2.1 of the License, or (at your option) any later version.        
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public  
- * License along with this library;  
- * if not, see <http://www.gnu.org/licenses/>. 
- *     
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library;
+ * if not, see <http://www.gnu.org/licenses/>.
+ *
  * @author Rafael Antognolli <antognolli@profusion.mobi>
  */
 
@@ -219,7 +219,7 @@ _ec_op_generated_cb(void *data, Ethumb *e, Eina_Bool success)
    const char *thumb_path, *thumb_key;
    int size_path, size_key, size_cmd;
 
-   DBG("thumb generated!");
+   DBG("thumb generated (%i)!", success);
    ethumb_thumb_path_get(e, &thumb_path, &thumb_key);
 
    if (!thumb_path)
@@ -271,7 +271,15 @@ _ec_op_generate(struct _Ethumbd_Child *ec)
 
    ethumb_file_set(ec->ethumbt[index], path, key);
    ethumb_thumb_path_set(ec->ethumbt[index], thumb_path, thumb_key);
-   ethumb_generate(ec->ethumbt[index], _ec_op_generated_cb, ec, NULL);
+
+   if (ethumb_exists(ec->ethumbt[index]))
+     {
+        _ec_op_generated_cb(ec, ec->ethumbt[index], EINA_TRUE);
+     }
+   else
+     {
+        ethumb_generate(ec->ethumbt[index], _ec_op_generated_cb, ec, NULL);
+     }
 
    free(path);
    free(key);
@@ -344,6 +352,21 @@ _ec_aspect_set(struct _Ethumbd_Child *ec, Ethumb *e)
      return 0;
    ethumb_thumb_aspect_set(e, value);
    DBG("aspect = %d", value);
+
+   return 1;
+}
+
+static int
+_ec_orientation_set(struct _Ethumbd_Child *ec, Ethumb *e)
+{
+   int r;
+   int value;
+
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
+   if (!r)
+     return 0;
+   ethumb_thumb_orientation_set(e, value);
+   DBG("orientation = %d", value);
 
    return 1;
 }
@@ -573,6 +596,9 @@ _ec_setup_process(struct _Ethumbd_Child *ec, int index, int type)
 	 break;
       case ETHUMBD_ASPECT:
 	 _ec_aspect_set(ec, e);
+	 break;
+      case ETHUMBD_ORIENTATION:
+	 _ec_orientation_set(ec, e);
 	 break;
       case ETHUMBD_CROP_X:
 	 _ec_crop_set(ec, e);

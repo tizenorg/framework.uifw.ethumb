@@ -5,6 +5,8 @@
 #include "config.h"
 #endif
 
+#define EDJE_EDIT_IS_UNSTABLE_AND_I_KNOW_ABOUT_IT 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <Eina.h>
@@ -323,6 +325,7 @@ _generate_thumb(Ethumb *e)
    f = ethumb_thumb_format_get(e);
 
    emotion_object_file_set(o, file);
+   emotion_object_audio_mute_set(o, EINA_TRUE);
 
    _plugin->video = o;
    _plugin->e = e;
