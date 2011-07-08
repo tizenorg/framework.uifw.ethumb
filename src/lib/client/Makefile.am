@@ -18,7 +18,9 @@ libethumb_client_la_SOURCES = \
 libethumb_client_la_DEPENDENCIES = $(top_builddir)/config.h
 libethumb_client_la_LIBADD = \
 	$(top_builddir)/src/lib/libethumb.la \
-	@EDBUS_LIBS@
+	@EDBUS_LIBS@ \
+	@ECORE_LIBS@ \
+    @EINA_LIBS@
 libethumb_client_la_LDFLAGS = -no-undefined @lt_enable_auto_import@ -version-info @version_info@
 
 # @EVAS_LIBS@ @ECORE_EVAS_LIBS@ @ECORE_FILE_LIBS@ @EDJE_LIBS@ 
