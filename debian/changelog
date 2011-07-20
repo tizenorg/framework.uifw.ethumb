@@ -1,3 +1,11 @@
+ethumb (1.0.0+svn.51480slp2+9) unstable; urgency=low
+
+  * [SVN Migration r60760]
+  * Git: 165.213.180.234:slp/pkgs/e/ethumb
+  * Tag: ethumb_1.0.0+svn.51480slp2+9
+
+ -- Daniel Juyung Seo <juyung.seo@samsung.com>  Wed, 20 Jul 2011 17:55:39 +0900
+
 ethumb (1.0.0+svn.51480slp2+8) unstable; urgency=low
 
   * Repackaging due to EFL libraries update.
