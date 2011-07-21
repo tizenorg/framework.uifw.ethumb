@@ -1,3 +1,11 @@
+ethumb (1.0.0+svn.51480slp2+14) unstable; urgency=low
+
+  * [debian/control] Added more libexif-dev dependency.
+  * Git: 165.213.180.234:slp/pkgs/e/ethumb
+  * Tag: ethumb_1.0.0+svn.51480slp2+14
+
+ -- Daniel Juyung Seo <juyung.seo@samsung.com>  Thu, 21 Jul 2011 11:01:33 +0900
+
 ethumb (1.0.0+svn.51480slp2+13) unstable; urgency=low
 
   * [debian/control] Added more libexif-dev dependency.
