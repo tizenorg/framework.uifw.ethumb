@@ -38,76 +38,34 @@ Requires:   %{name} = %{version}-%{release}
 %description devel
 Thumbnailing library meant to replace epsilon (devel)
 
-%package bin
-Summary:    Thumbnail Generator Library (bin)
-Group:      Development/Libraries
-Requires:   %{name} = %{version}-%{release}
-
-%description bin
-Thumbnailing library meant to replace epsilon (bin)
-
-
 %prep
 %setup -q -n %{name}
 
-# >> setup
-# << setup
-
 %build
-# >> build pre
-# << build pre
 
 %autogen --disable-static
 %configure --disable-static
 make %{?jobs:-j%jobs}
 
-# >> build post
-# << build post
 %install
-rm -rf %{buildroot}
-# >> install pre
-# << install pre
 %make_install
-
-# >> install post
-# << install post
-
-
 
 %post -p /sbin/ldconfig
 
 %postun -p /sbin/ldconfig
-
-
-
-
-
-
-
 
 %files
 %defattr(-,root,root,-)
 %{_libdir}/libethumb*.so.*
 /usr/share/dbus-1/services/org.enlightenment.Ethumb.service
 /usr/share/ethumb/data/frames/default.edj
-# >> files
-# << files
-
+/usr/bin/ethumb
+/usr/bin/ethumbd
+/usr/bin/ethumbd_client
+/usr/libexec/ethumbd_slave
 
 %files devel
 %defattr(-,root,root,-)
 %{_includedir}/ethumb-0/*.h
 %{_libdir}/libethumb*.so
 %{_libdir}/pkgconfig/*.pc
-# >> files devel
-# << files devel
-
-%files bin
-%defattr(-,root,root,-)
-/usr/bin/ethumb
-/usr/bin/ethumbd
-/usr/bin/ethumbd_client
-/usr/libexec/ethumbd_slave
-# >> files bin
-# << files bin
-
