@@ -1,3 +1,11 @@
+ethumb (1.0.0+svn.60760slp2+02) unstable; urgency=low
+
+  * [debian/changelog] Updated package revision number.
+  * Git: 165.213.180.234:slp/pkgs/e/ethumb
+  * Tag: ethumb_1.0.0+svn.60760slp2+02
+
+ -- ChunEon Park <chuneon.park@samsung.com>  Sat, 03 Sep 2011 15:17:54 +0900
+
 ethumb (1.0.0+svn.60760slp2+01) unstable; urgency=low
 
   * [debian/changelog] Updated package revision number.
