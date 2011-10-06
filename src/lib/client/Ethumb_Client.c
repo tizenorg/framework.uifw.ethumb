@@ -349,7 +349,7 @@ _ethumb_async_delete(void *data)
 
    ethumb_free(async->dup);
 
-   EINA_REFCOUNT_UNREF(async->source);
+   EINA_REFCOUNT_UNREF(async->source)
      _ethumb_client_free(async->source);
 
    free(async);
