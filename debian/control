@@ -30,5 +30,5 @@ Description: ethumb binary files
 Package: libethumb-dbg
 Section: debug
 Architecture: any
-Depends: ${shlibs:Depends}, libethumb (= ${binary:Version})
+Depends: libethumb (= ${binary:Version})
 Description: ethumb debug package
