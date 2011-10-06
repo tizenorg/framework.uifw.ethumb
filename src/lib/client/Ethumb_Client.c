@@ -100,6 +100,7 @@ struct _Ethumb_Client
    Ethumb *ethumb;
    int id_count;
 
+   Ethumb *old_ethumb_conf;
    E_DBus_Connection *conn;
    E_DBus_Signal_Handler *name_owner_changed_handler;
    E_DBus_Signal_Handler *generated_signal;
@@ -126,7 +127,6 @@ struct _Ethumb_Client
 
    EINA_REFCOUNT;
 
-   Eina_Bool ethumb_dirty : 1;
    Eina_Bool connected : 1;
    Eina_Bool server_started : 1;
 };
@@ -323,6 +323,9 @@ end_connection:
 
    if (client->pending_start_service_by_name)
      dbus_pending_call_cancel(client->pending_start_service_by_name);
+
+   if (client->old_ethumb_conf)
+       ethumb_free(client->old_ethumb_conf);
 
    ethumb_free(client->ethumb);
 
@@ -592,7 +595,7 @@ error:
 }
 
 static void
-_ethumb_client_exists_heavy(void *data, Ecore_Thread *thread)
+_ethumb_client_exists_heavy(void *data, Ecore_Thread *thread __UNUSED__)
 {
    Ethumb_Async_Exists *async = data;
 
@@ -600,17 +603,19 @@ _ethumb_client_exists_heavy(void *data, Ecore_Thread *thread)
 }
 
 static void
-_ethumb_client_exists_end(void *data, Ecore_Thread *thread)
+_ethumb_client_exists_end(void *data, Ecore_Thread *thread __UNUSED__)
 {
    Ethumb_Async_Exists *async = data;
    Ethumb_Async_Exists_Cb *cb;
    Ethumb *tmp = async->source->ethumb;
 
    async->source->ethumb = async->dup;
-   async->source->ethumb_dirty = ethumb_cmp(tmp, async->dup);
 
    EINA_LIST_FREE(async->callbacks, cb)
-     cb->exists_cb(async->source, (Ethumb_Exists*) async, async->exists, (void*) cb->data);
+     {
+       cb->exists_cb(async->source, (Ethumb_Exists*) async, async->exists, (void*) cb->data);
+       free(cb);
+     }
 
    async->source->ethumb = tmp;
    async->thread = NULL;
@@ -755,6 +760,7 @@ ethumb_client_connect(Ethumb_Client_Connect_Cb connect_cb, const void *data, Ein
 	goto err;
      }
 
+   eclient->old_ethumb_conf = NULL;
    eclient->connect.cb = connect_cb;
    eclient->connect.data = (void *)data;
    eclient->connect.free_data = free_data;
@@ -945,7 +951,6 @@ ethumb_client_ethumb_setup(Ethumb_Client *client)
 
    EINA_SAFETY_ON_NULL_RETURN(client);
    EINA_SAFETY_ON_FALSE_RETURN(client->connected);
-   client->ethumb_dirty = 0;
 
    msg = dbus_message_new_method_call(_ethumb_dbus_bus_name,
 				      client->object_path,
@@ -1452,7 +1457,8 @@ ethumb_client_fdo_set(Ethumb_Client *client, Ethumb_Thumb_FDO_Size s)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_fdo_set(client->ethumb, s);
 }
 
@@ -1470,7 +1476,8 @@ ethumb_client_size_set(Ethumb_Client *client, int tw, int th)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_size_set(client->ethumb, tw, th);
 }
 
@@ -1507,7 +1514,8 @@ ethumb_client_format_set(Ethumb_Client *client, Ethumb_Thumb_Format f)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_format_set(client->ethumb, f);
 }
 
@@ -1563,7 +1571,8 @@ ethumb_client_aspect_set(Ethumb_Client *client, Ethumb_Thumb_Aspect a)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_aspect_set(client->ethumb, a);
 }
 
@@ -1605,7 +1614,8 @@ ethumb_client_orientation_set(Ethumb_Client *client, Ethumb_Thumb_Orientation o)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_orientation_set(client->ethumb, o);
 }
 
@@ -1644,7 +1654,8 @@ ethumb_client_crop_align_set(Ethumb_Client *client, float x, float y)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_crop_align_set(client->ethumb, x, y);
 }
 
@@ -1758,7 +1769,8 @@ ethumb_client_frame_set(Ethumb_Client *client, const char *file, const char *gro
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, 0);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    return ethumb_frame_set(client->ethumb, file, group, swallow);
 }
 
@@ -1790,7 +1802,8 @@ ethumb_client_dir_path_set(Ethumb_Client *client, const char *path)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_dir_path_set(client->ethumb, path);
 }
 
@@ -1843,7 +1856,8 @@ ethumb_client_category_set(Ethumb_Client *client, const char *category)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_thumb_category_set(client->ethumb, category);
 }
 
@@ -1880,7 +1894,8 @@ ethumb_client_video_time_set(Ethumb_Client *client, float t)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_video_time_set(client->ethumb, t);
 }
 
@@ -1903,7 +1918,8 @@ ethumb_client_video_start_set(Ethumb_Client *client, float start)
    EINA_SAFETY_ON_FALSE_RETURN(start >= 0.0);
    EINA_SAFETY_ON_FALSE_RETURN(start <= 1.0);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_video_start_set(client->ethumb, start);
 }
 
@@ -1931,7 +1947,8 @@ ethumb_client_video_interval_set(Ethumb_Client *client, float interval)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_video_interval_set(client->ethumb, interval);
 }
 
@@ -1953,7 +1970,8 @@ ethumb_client_video_ntimes_set(Ethumb_Client *client, unsigned int ntimes)
    EINA_SAFETY_ON_NULL_RETURN(client);
    EINA_SAFETY_ON_FALSE_RETURN(ntimes > 0);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_video_ntimes_set(client->ethumb, ntimes);
 }
 
@@ -1979,7 +1997,8 @@ ethumb_client_video_fps_set(Ethumb_Client *client, unsigned int fps)
    EINA_SAFETY_ON_NULL_RETURN(client);
    EINA_SAFETY_ON_FALSE_RETURN(fps > 0);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_video_fps_set(client->ethumb, fps);
 }
 
@@ -1996,7 +2015,8 @@ ethumb_client_document_page_set(Ethumb_Client *client, unsigned int page)
 {
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client->ethumb_dirty = 1;
+   if (!client->old_ethumb_conf)
+     client->old_ethumb_conf = ethumb_dup(client->ethumb);
    ethumb_document_page_set(client->ethumb, page);
 }
 
@@ -2144,6 +2164,7 @@ ethumb_client_thumb_exists(Ethumb_Client *client, Ethumb_Client_Thumb_Exists_Cb 
 {
    Ethumb_Async_Exists_Cb *cb;
    Ethumb_Async_Exists *async;
+   Ecore_Thread *t;
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, NULL);
 
@@ -2182,11 +2203,13 @@ ethumb_client_thumb_exists(Ethumb_Client *client, Ethumb_Client_Thumb_Exists_Cb 
    async->callbacks = eina_list_append(NULL, cb);
 
    EINA_REFCOUNT_INIT(async);
-   async->thread = ecore_thread_run(_ethumb_client_exists_heavy,
-				    _ethumb_client_exists_end,
-				    _ethumb_client_exists_end,
-				    async);
+   t = ecore_thread_run(_ethumb_client_exists_heavy,
+			_ethumb_client_exists_end,
+			_ethumb_client_exists_end,
+			async);
+   if (!t) return NULL;
 
+   async->thread = t;
    eina_hash_direct_add(_exists_request, async->dup, async);
 
    return (Ethumb_Exists*) async;
@@ -2208,6 +2231,7 @@ ethumb_client_thumb_exists_cancel(Ethumb_Exists *exists, Ethumb_Client_Thumb_Exi
      if (cb->exists_cb == exists_cb && cb->data == data)
        {
           async->callbacks = eina_list_remove_list(async->callbacks, l);
+	  free(cb);
           break;
        }
 
@@ -2284,8 +2308,13 @@ ethumb_client_generate(Ethumb_Client *client, Ethumb_Client_Generate_Cb generate
 
    ethumb_thumb_path_get(client->ethumb, &thumb, &thumb_key);
 
-   if (client->ethumb_dirty)
-     ethumb_client_ethumb_setup(client);
+   if (client->old_ethumb_conf &&
+       ethumb_cmp(client->old_ethumb_conf, client->ethumb))
+     {
+       ethumb_client_ethumb_setup(client);
+       ethumb_free(client->old_ethumb_conf);
+       client->old_ethumb_conf = NULL;
+     }
    id = _ethumb_client_queue_add(client, file, key, thumb, thumb_key,
 				 generated_cb, data, free_data);
 

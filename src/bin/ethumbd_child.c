@@ -125,7 +125,7 @@ _ec_write_safe(int fd, const void *buf, ssize_t size)
 }
 
 static int
-_ec_pipe_str_read(struct _Ethumbd_Child *ec, char **str)
+_ec_pipe_str_read(struct _Ethumbd_Child *ec __UNUSED__, char **str)
 {
    int size;
    int r;
@@ -184,15 +184,15 @@ static int
 _ec_op_new(struct _Ethumbd_Child *ec)
 {
    int r;
-   int index;
+   int idx;
 
-   r = _ec_read_safe(STDIN_FILENO, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
-   DBG("ethumbd new(). index = %d", index);
+   DBG("ethumbd new(). idx = %d", idx);
 
-   ec->ethumbt[index] = ethumb_new();
+   ec->ethumbt[idx] = ethumb_new();
    return 1;
 }
 
@@ -200,21 +200,21 @@ static int
 _ec_op_del(struct _Ethumbd_Child *ec)
 {
    int r;
-   int index;
+   int idx;
 
-   r = _ec_read_safe(STDIN_FILENO, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
-   DBG("ethumbd del(). index = %d", index);
+   DBG("ethumbd del(). idx = %d", idx);
 
-   ethumb_free(ec->ethumbt[index]);
-   ec->ethumbt[index] = NULL;
+   ethumb_free(ec->ethumbt[idx]);
+   ec->ethumbt[idx] = NULL;
    return 1;
 }
 
 static void
-_ec_op_generated_cb(void *data, Ethumb *e, Eina_Bool success)
+_ec_op_generated_cb(void *data __UNUSED__, Ethumb *e, Eina_Bool success)
 {
    const char *thumb_path, *thumb_key;
    int size_path, size_key, size_cmd;
@@ -248,11 +248,11 @@ _ec_op_generated_cb(void *data, Ethumb *e, Eina_Bool success)
 static int
 _ec_op_generate(struct _Ethumbd_Child *ec)
 {
-   int index;
+   int idx;
    char *path, *key, *thumb_path, *thumb_key;
    int r;
 
-   r = _ec_read_safe(STDIN_FILENO, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
@@ -269,16 +269,16 @@ _ec_op_generate(struct _Ethumbd_Child *ec)
    if (!r)
      return 0;
 
-   ethumb_file_set(ec->ethumbt[index], path, key);
-   ethumb_thumb_path_set(ec->ethumbt[index], thumb_path, thumb_key);
+   ethumb_file_set(ec->ethumbt[idx], path, key);
+   ethumb_thumb_path_set(ec->ethumbt[idx], thumb_path, thumb_key);
 
-   if (ethumb_exists(ec->ethumbt[index]))
+   if (ethumb_exists(ec->ethumbt[idx]))
      {
-        _ec_op_generated_cb(ec, ec->ethumbt[index], EINA_TRUE);
+        _ec_op_generated_cb(ec, ec->ethumbt[idx], EINA_TRUE);
      }
    else
      {
-        ethumb_generate(ec->ethumbt[index], _ec_op_generated_cb, ec, NULL);
+        ethumb_generate(ec->ethumbt[idx], _ec_op_generated_cb, ec, NULL);
      }
 
    free(path);
@@ -290,7 +290,7 @@ _ec_op_generate(struct _Ethumbd_Child *ec)
 }
 
 static int
-_ec_fdo_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_fdo_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -305,7 +305,7 @@ _ec_fdo_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_size_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_size_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int w, h;
@@ -327,7 +327,7 @@ _ec_size_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_format_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_format_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -342,7 +342,7 @@ _ec_format_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_aspect_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_aspect_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -357,7 +357,7 @@ _ec_aspect_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_orientation_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_orientation_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -372,7 +372,7 @@ _ec_orientation_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_crop_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_crop_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float x, y;
@@ -394,7 +394,7 @@ _ec_crop_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_quality_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_quality_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -409,7 +409,7 @@ _ec_quality_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_compress_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_compress_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -487,7 +487,7 @@ _ec_category_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_video_time_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_time_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float value;
@@ -502,7 +502,7 @@ _ec_video_time_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_video_start_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_start_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float value;
@@ -517,7 +517,7 @@ _ec_video_start_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_video_interval_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_interval_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float value;
@@ -532,7 +532,7 @@ _ec_video_interval_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_video_ntimes_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_ntimes_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -547,7 +547,7 @@ _ec_video_ntimes_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_video_fps_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_fps_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -562,7 +562,7 @@ _ec_video_fps_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static int
-_ec_document_page_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_document_page_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
@@ -577,11 +577,11 @@ _ec_document_page_set(struct _Ethumbd_Child *ec, Ethumb *e)
 }
 
 static void
-_ec_setup_process(struct _Ethumbd_Child *ec, int index, int type)
+_ec_setup_process(struct _Ethumbd_Child *ec, int idx, int type)
 {
    Ethumb *e;
 
-   e = ec->ethumbt[index];
+   e = ec->ethumbt[idx];
 
    switch (type)
      {
@@ -645,10 +645,10 @@ static int
 _ec_op_setup(struct _Ethumbd_Child *ec)
 {
    int r;
-   int index;
+   int idx;
    int type;
 
-   r = _ec_read_safe(STDIN_FILENO, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
@@ -657,7 +657,7 @@ _ec_op_setup(struct _Ethumbd_Child *ec)
      return 0;
    while (type != ETHUMBD_SETUP_FINISHED)
      {
-	_ec_setup_process(ec, index, type);
+	_ec_setup_process(ec, idx, type);
 	r = _ec_read_safe(STDIN_FILENO, &type, sizeof(type));
 	if (!r)
 	  return 0;
@@ -730,7 +730,7 @@ _ec_setup(struct _Ethumbd_Child *ec)
 }
 
 int
-main(int argc, const char *argv[])
+main(int argc __UNUSED__, const char *argv[] __UNUSED__)
 {
    struct _Ethumbd_Child *ec;
 
