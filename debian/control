@@ -1,0 +1,34 @@
+Source: ethumb
+Section: x11
+Priority: optional
+Maintainer: Jaehwan Kim <jae.hwan.kim@samsung.com>,
+ Juyung Seo <juyung.seo@samsung.com>,
+ Jeonghyun Yun <jh0506.yun@samsung.com>,
+ Chuneon Park <chuneon.park@samsung.com>,
+ Mike McCormack <mj.mccormack@samsung.com>
+Build-Depends: cdbs, debhelper (>= 6), libevas-dev, libedje-dev, libeina-dev, libecore-dev, libedbus-dev, pkg-config, libtool, libexif-dev
+Standards-Version: 3.8.1
+Homepage: http://www.enlightenment.org
+
+Package: libethumb
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Enlightenment thumbnailing library
+ Thumbnailing library meant to replace epsilon.
+
+Package: libethumb-dev
+Section: libdevel
+Architecture: any
+Depends: libethumb (= ${binary:Version}), libevas-dev, libedje-dev, libeina-dev, libecore-dev, libedbus-dev, libexif-dev
+Description: ethumb devel package
+
+Package: libethumb-bin
+Architecture: any
+Depends: ${shlibs:Depends}, libethumb (= ${binary:Version})
+Description: ethumb binary files
+
+Package: libethumb-dbg
+Section: debug
+Architecture: any
+Depends: libethumb (= ${binary:Version})
+Description: ethumb debug package
