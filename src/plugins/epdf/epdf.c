@@ -1,15 +1,17 @@
-#include "Ethumb.h"
-#include "Ethumb_Plugin.h"
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <Eina.h>
 #include <Evas.h>
 #include <Epdf.h>
+
+#include "Ethumb.h"
+#include "Ethumb_Plugin.h"
+
 
 static void
 _generate_thumb(Ethumb *e)
@@ -74,6 +76,7 @@ ethumb_plugin_get(void)
      {
 	extensions,
 	_generate_thumb,
+	NULL /* This plugin is not assynchronous so not possible to cancel it at all */
      };
 
    return &plugin;

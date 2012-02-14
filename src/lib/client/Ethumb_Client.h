@@ -1,7 +1,6 @@
 #ifndef __ETHUMB_CLIENT_H__
 #define __ETHUMB_CLIENT_H__ 1
 
-#include <Ecore.h>
 #include <Ethumb.h>
 
 #ifdef EAPI
@@ -12,27 +11,21 @@
 # ifdef EFL_ETHUMB_CLIENT_BUILD
 #  ifdef DLL_EXPORT
 #   define EAPI __declspec(dllexport)
-#   define GNUC_NULL_TERMINATED
 #  else
 #   define EAPI
-#   define GNUC_NULL_TERMINATED
 #  endif /* ! DLL_EXPORT */
 # else
 #  define EAPI __declspec(dllimport)
-#  define GNUC_NULL_TERMINATED
 # endif /* ! EFL_ETHUMB_CLIENT_BUILD */
 #else
 # ifdef __GNUC__
 #  if __GNUC__ >= 4
 #   define EAPI __attribute__ ((visibility("default")))
-#   define GNUC_NULL_TERMINATED __attribute__((__sentinel__))
 #  else
 #   define EAPI
-#  define GNUC_NULL_TERMINATED
 #  endif
 # else
 #  define EAPI
-#  define GNUC_NULL_TERMINATED
 # endif
 #endif /* ! _WIN32 */
 
@@ -121,7 +114,7 @@ typedef void (*Ethumb_Client_Generate_Cb)(void *data, Ethumb_Client *client, int
  * temporarily realy restored to what it was when the call to
  * ethumb_client_thumb_exists() was done.
  */
-typedef void (*Ethumb_Client_Thumb_Exists_Cb)(Ethumb_Client *client, Ethumb_Exists *thread, Eina_Bool exists, void *data);
+typedef void (*Ethumb_Client_Thumb_Exists_Cb)(void *data, Ethumb_Client *client, Ethumb_Exists *thread, Eina_Bool exists);
 
 /**
  * @brief reports results of ethumb_client_generate_cancel()
@@ -195,12 +188,23 @@ EAPI void ethumb_client_file_get(Ethumb_Client *client, const char **path, const
 EAPI void ethumb_client_file_free(Ethumb_Client *client);
 
 EAPI Ethumb_Exists *ethumb_client_thumb_exists(Ethumb_Client *client, Ethumb_Client_Thumb_Exists_Cb exists_cb, const void *data);
-EAPI void ethumb_client_thumb_exists_cancel(Ethumb_Exists *exists, Ethumb_Client_Thumb_Exists_Cb exists_cb, const void *data);
+EAPI void ethumb_client_thumb_exists_cancel(Ethumb_Exists *exists);
 EAPI Eina_Bool ethumb_client_thumb_exists_check(Ethumb_Exists *exists);
 EAPI int  ethumb_client_generate(Ethumb_Client *client, Ethumb_Client_Generate_Cb generated_cb, const void *data, Eina_Free_Cb free_data);
 EAPI void ethumb_client_generate_cancel(Ethumb_Client *client, int id, Ethumb_Client_Generate_Cancel_Cb cancel_cb, const void *data, Eina_Free_Cb free_data);
 EAPI void ethumb_client_generate_cancel_all(Ethumb_Client *client);
-/**
+
+typedef void (*Ethumb_Client_Async_Done_Cb)(Ethumb_Client *ethumbd, const char *thumb_path, const char *thumb_key, void *data);
+typedef void (*Ethumb_Client_Async_Error_Cb)(Ethumb_Client *ethumbd, void *data);
+
+typedef struct _Ethumb_Client_Async Ethumb_Client_Async;
+
+EAPI Ethumb_Client_Async *ethumb_client_thumb_async_get(Ethumb_Client *client,
+							Ethumb_Client_Async_Done_Cb done,
+							Ethumb_Client_Async_Error_Cb error,
+							const void *data);
+EAPI void ethumb_client_thumb_async_cancel(Ethumb_Client *client, Ethumb_Client_Async *request);
+  /**
  * @}
  */
 
