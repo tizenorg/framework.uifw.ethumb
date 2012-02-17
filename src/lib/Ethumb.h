@@ -11,27 +11,21 @@
 # ifdef EFL_ETHUMB_BUILD
 #  ifdef DLL_EXPORT
 #   define EAPI __declspec(dllexport)
-#   define GNUC_NULL_TERMINATED
 #  else
 #   define EAPI
-#   define GNUC_NULL_TERMINATED
 #  endif /* ! DLL_EXPORT */
 # else
 #  define EAPI __declspec(dllimport)
-#  define GNUC_NULL_TERMINATED
 # endif /* ! EFL_ETHUMB_BUILD */
 #else
 # ifdef __GNUC__
 #  if __GNUC__ >= 4
 #   define EAPI __attribute__ ((visibility("default")))
-#   define GNUC_NULL_TERMINATED __attribute__((__sentinel__))
 #  else
 #   define EAPI
-#  define GNUC_NULL_TERMINATED
 #  endif
 # else
 #  define EAPI
-#  define GNUC_NULL_TERMINATED
 # endif
 #endif /* ! _WIN32 */
 
@@ -98,6 +92,8 @@ EAPI const char  *ethumb_thumb_category_get(const Ethumb *e) EINA_WARN_UNUSED_RE
 
 EAPI void         ethumb_thumb_path_set(Ethumb *e, const char *path, const char *key) EINA_ARG_NONNULL(1);
 EAPI void         ethumb_thumb_path_get(Ethumb *e, const char **path, const char **key) EINA_ARG_NONNULL(1);
+EAPI void         ethumb_thumb_hash(Ethumb *e) EINA_ARG_NONNULL(1);
+EAPI void         ethumb_thumb_hash_copy(Ethumb *dst, const Ethumb *src) EINA_ARG_NONNULL(1, 2);
 
 typedef enum _Ethumb_Thumb_FDO_Size
 {
