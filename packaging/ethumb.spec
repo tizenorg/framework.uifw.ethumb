@@ -1,10 +1,10 @@
 Name:       ethumb
 Summary:    Thumbnail Generator Library
-Version:    0.1.1.svn60760
-Release:    1
+Version:    1.0.0+svn.67185slp2
+Release:    1.1
 Group:      TO_BE/FILLED_IN
 License:    TO BE FILLED IN
-Source0:    %{name}-%{version}.tar.bz2
+Source0:    %{name}-%{version}.tar.gz
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 BuildRequires:  pkgconfig(ecore)
