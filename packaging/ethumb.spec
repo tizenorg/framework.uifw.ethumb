@@ -1,10 +1,12 @@
+#sbs-git:slp/pkgs/e/ethumb ethumb 1.0.0+svn.68464slp2+build01 eee5311dd71f4fde48a4838412f70490e5d70c0b
+
 Name:       ethumb
 Summary:    Thumbnail Generator Library
-Version:    0.1.1.svn60760
+Version: 1.0.0+svn.68464slp2+build01
 Release:    1
 Group:      TO_BE/FILLED_IN
 License:    TO BE FILLED IN
-Source0:    %{name}-%{version}.tar.bz2
+Source0:    %{name}-%{version}.tar.gz
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 BuildRequires:  pkgconfig(ecore)
@@ -32,6 +34,8 @@ Thumbnailing library meant to replace epsilon (devel)
 %setup -q
 
 %build
+export CFLAGS+=" -fPIC"
+export LDFLAGS+=" -Wl,--hash-style=both -Wl,--as-needed"
 
 %autogen --disable-static
 %configure --disable-static
