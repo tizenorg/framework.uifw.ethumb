@@ -60,6 +60,6 @@ make %{?jobs:-j%jobs}
 
 %files devel
 %defattr(-,root,root,-)
-%{_includedir}/ethumb-0/*.h
+%{_includedir}/ethumb-1/*.h
 %{_libdir}/libethumb*.so
 %{_libdir}/pkgconfig/*.pc
