@@ -2,7 +2,7 @@
 
 Name:       ethumb
 Summary:    Thumbnail Generator Library
-Version:    1.0.0+svn.69484slp2+build01
+Version:    1.0.0+svn.69484slp2+build02
 Release:    1
 Group:      TO_BE/FILLED_IN
 License:    TO BE FILLED IN
