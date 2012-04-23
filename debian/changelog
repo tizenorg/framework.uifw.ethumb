@@ -1,3 +1,11 @@
+ethumb (1.0.0+svn.70342slp2+build01) unstable; urgency=low
+
+  * Package Upload
+  * Git: slp/pkgs/e/ethumb
+  * Tag: ethumb_1.0.0+svn.70342slp2+build01
+
+ -- Jaehwan Kim <jae.hwan.kim@samsung.com>  Mon, 23 Apr 2012 15:30:43 +0900
+
 ethumb (1.0.0+svn.69899slp2+build01) unstable; urgency=low
 
   * Package Upload
