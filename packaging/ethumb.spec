@@ -1,9 +1,11 @@
+#sbs-git:slp/pkgs/e/ethumb ethumb 1.0.0+svn.68464slp2+build01 eee5311dd71f4fde48a4838412f70490e5d70c0b
+
 Name:       ethumb
 Summary:    Thumbnail Generator Library
-Version:    1.0.0+svn.67185slp2
-Release:    1.1
-Group:      TO_BE/FILLED_IN
-License:    TO BE FILLED IN
+Version:    1.0.0+svn.69899slp2+build01
+Release:    1
+Group:      System/Libraries
+License:    LGPLv2.1
 Source0:    %{name}-%{version}.tar.gz
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -32,6 +34,8 @@ Thumbnailing library meant to replace epsilon (devel)
 %setup -q
 
 %build
+export CFLAGS+=" -fPIC"
+export LDFLAGS+=" -Wl,--hash-style=both -Wl,--as-needed"
 
 %autogen --disable-static
 %configure --disable-static
@@ -56,6 +60,6 @@ make %{?jobs:-j%jobs}
 
 %files devel
 %defattr(-,root,root,-)
-%{_includedir}/ethumb-0/*.h
+%{_includedir}/ethumb-1/*.h
 %{_libdir}/libethumb*.so
 %{_libdir}/pkgconfig/*.pc
