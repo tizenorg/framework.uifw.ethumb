@@ -7,6 +7,7 @@ Release:    1
 Group:      System/Libraries
 License:    LGPLv2.1
 Source0:    %{name}-%{version}.tar.gz
+Source1001: packaging/ethumb.manifest 
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 BuildRequires:  pkgconfig(ecore)
@@ -34,6 +35,7 @@ Thumbnailing library meant to replace epsilon (devel)
 %setup -q
 
 %build
+cp %{SOURCE1001} .
 export CFLAGS+=" -fPIC"
 export LDFLAGS+=" -Wl,--hash-style=both -Wl,--as-needed"
 
@@ -49,6 +51,7 @@ make %{?jobs:-j%jobs}
 %postun -p /sbin/ldconfig
 
 %files
+%manifest ethumb.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libethumb*.so.*
 /usr/share/dbus-1/services/org.enlightenment.Ethumb.service
@@ -59,6 +62,7 @@ make %{?jobs:-j%jobs}
 /usr/libexec/ethumbd_slave
 
 %files devel
+%manifest ethumb.manifest
 %defattr(-,root,root,-)
 %{_includedir}/ethumb-1/*.h
 %{_libdir}/libethumb*.so
