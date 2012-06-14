@@ -3,21 +3,20 @@
 Name:       ethumb
 Summary:    Thumbnail Generator Library
 Version:    1.0.0+svn.70375slp2+build02
-Release:    1
+Release:    2
 Group:      System/Libraries
 License:    LGPLv2.1
 Source0:    %{name}-%{version}.tar.gz
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
-BuildRequires:  pkgconfig(ecore)
-BuildRequires:  pkgconfig(ecore-evas)
-BuildRequires:  pkgconfig(ecore-file)
-BuildRequires:  pkgconfig(edje)
-BuildRequires:  pkgconfig(eina)
-BuildRequires:  pkgconfig(evas)
-BuildRequires:  pkgconfig(edbus)
+BuildRequires:  eina-devel
+BuildRequires:  evas-devel
+BuildRequires:  ecore-devel
+BuildRequires:  edje-devel
+BuildRequires:  eet-devel
 BuildRequires:  edje-bin
-BuildRequires: pkgconfig(libexif)
+BuildRequires:  edbus-devel
+BuildRequires:  libexif-devel
 
 %description
 Enlightenment thumbnailing library Thumbnailing library meant to replace epsilon
