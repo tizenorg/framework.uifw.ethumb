@@ -77,6 +77,9 @@ void *alloca (size_t);
   #include <libexif/exif-data.h>
 #endif
 
+static Ethumb_Version _version = { VMAJ, VMIN, VMIC, VREV };
+EAPI Ethumb_Version *ethumb_version = &_version;
+
 static int _log_dom = -1;
 #define DBG(...) EINA_LOG_DOM_DBG(_log_dom, __VA_ARGS__)
 #define INF(...) EINA_LOG_DOM_INFO(_log_dom, __VA_ARGS__)
@@ -199,6 +202,11 @@ ethumb_init(void)
 EAPI int
 ethumb_shutdown(void)
 {
+   if (initcount <= 0)
+     {
+        EINA_LOG_ERR("Init count not greater than 0 in shutdown.");
+        return 0;
+     }
    initcount--;
    if (initcount == 0)
      {
@@ -787,6 +795,7 @@ ethumb_file_set(Ethumb *e, const char *path, const char *key)
      }
 
    path = _ethumb_build_absolute_path(path, buf);
+   eina_stringshare_replace(&e->src_hash, NULL);
    eina_stringshare_replace(&e->src_path, path);
    eina_stringshare_replace(&e->src_key, key);
 
@@ -949,8 +958,6 @@ static void
 _ethumb_file_generate_path(Ethumb *e)
 {
    char buf[PATH_MAX];
-   char *fullname;
-   const char *hash;
    const char *thumb_dir, *category;
    const char *ext;
    int fdo_format;
@@ -987,10 +994,15 @@ _ethumb_file_generate_path(Ethumb *e)
    else
      ext = "eet";
 
-   fullname = ecore_file_realpath(e->src_path);
-   hash = _ethumb_generate_hash(fullname);
-   snprintf(buf, sizeof(buf), "%s/%s/%s.%s", thumb_dir, category, hash, ext);
-   free(fullname);
+   if (!e->src_hash)
+     {
+       char *fullname;
+
+       fullname = ecore_file_realpath(e->src_path);
+       e->src_hash = _ethumb_generate_hash(fullname);
+       free(fullname);
+     }
+   snprintf(buf, sizeof(buf), "%s/%s/%s.%s", thumb_dir, category, e->src_hash, ext);
    DBG("ethumb=%p, path=%s", e, buf);
    eina_stringshare_replace(&e->thumb_path, buf);
    if (e->format == ETHUMB_THUMB_EET)
@@ -1003,7 +1015,6 @@ _ethumb_file_generate_path(Ethumb *e)
 
    eina_stringshare_del(thumb_dir);
    eina_stringshare_del(category);
-   eina_stringshare_del(hash);
 }
 
 EAPI void
@@ -1012,6 +1023,7 @@ ethumb_file_free(Ethumb *e)
    EINA_SAFETY_ON_NULL_RETURN(e);
    DBG("ethumb=%p", e);
 
+   eina_stringshare_replace(&e->src_hash, NULL);
    eina_stringshare_replace(&e->src_path, NULL);
    eina_stringshare_replace(&e->src_key, NULL);
    eina_stringshare_replace(&e->thumb_path, NULL);
@@ -1050,10 +1062,38 @@ ethumb_thumb_path_get(Ethumb *e, const char **path, const char **key)
    if (key) *key = e->thumb_key;
 }
 
-void
+EAPI void
+ethumb_thumb_hash(Ethumb *e)
+{
+   EINA_SAFETY_ON_NULL_RETURN(e);
+   if (!e->src_hash)
+     {
+        char *fullname;
+
+        fullname = ecore_file_realpath(e->src_path);
+        e->src_hash = _ethumb_generate_hash(fullname);
+        free(fullname);
+     }
+}
+
+EAPI void
+ethumb_thumb_hash_copy(Ethumb *dst, const Ethumb *src)
+{
+   EINA_SAFETY_ON_NULL_RETURN(dst);
+   EINA_SAFETY_ON_NULL_RETURN(src);
+
+   if (src == dst) return ;
+
+   eina_stringshare_del(dst->src_hash);
+   dst->src_hash = eina_stringshare_ref(src->src_hash);
+}
+
+EAPI void
 ethumb_calculate_aspect_from_ratio(Ethumb *e, float ia, int *w, int *h)
 {
    float a;
+
+   EINA_SAFETY_ON_NULL_RETURN(e);
 
    *w = e->tw;
    *h = e->th;
@@ -1072,20 +1112,25 @@ ethumb_calculate_aspect_from_ratio(Ethumb *e, float ia, int *w, int *h)
      }
 }
 
-void
+EAPI void
 ethumb_calculate_aspect(Ethumb *e, int iw, int ih, int *w, int *h)
 {
    float ia;
+
+   if (ih == 0)
+     return;
 
    ia = iw / (float)ih;
 
    ethumb_calculate_aspect_from_ratio(e, ia, w, h);
 }
 
-void
+EAPI void
 ethumb_calculate_fill_from_ratio(Ethumb *e, float ia, int *fx, int *fy, int *fw, int *fh)
 {
    float a;
+
+   EINA_SAFETY_ON_NULL_RETURN(e);
 
    *fw = e->tw;
    *fh = e->th;
@@ -1116,10 +1161,14 @@ ethumb_calculate_fill_from_ratio(Ethumb *e, float ia, int *fx, int *fy, int *fw,
      }
 }
 
-void
+EAPI void
 ethumb_calculate_fill(Ethumb *e, int iw, int ih, int *fx, int *fy, int *fw, int *fh)
 {
    float ia;
+
+   if (ih == 0)
+     return;
+
    ia = iw / (float)ih;
 
    ethumb_calculate_fill_from_ratio(e, ia, fx, fy, fw, fh);
@@ -1155,15 +1204,18 @@ _ethumb_plugin_generate(Ethumb *e)
    else
      evas_object_hide(e->img);
 
-   plugin->generate_thumb(e);
+   e->plugin = plugin;
+   e->pdata = plugin->thumb_generate(e);
 
    return EINA_TRUE;
 }
 
-Eina_Bool
+EAPI Eina_Bool
 ethumb_plugin_image_resize(Ethumb *e, int w, int h)
 {
    Evas_Object *img;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, 0);
 
    img = e->img;
 
@@ -1190,12 +1242,14 @@ ethumb_plugin_image_resize(Ethumb *e, int w, int h)
    return EINA_TRUE;
 }
 
-Eina_Bool
+EAPI Eina_Bool
 ethumb_image_save(Ethumb *e)
 {
    Eina_Bool r;
    char *dname;
    char flags[256];
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, 0);
 
    evas_damage_rectangle_add(e->sub_e, 0, 0, e->rw, e->rh);
    evas_render(e->sub_e);
@@ -1480,7 +1534,7 @@ _ethumb_finished_idler_cb(void *data)
    return EINA_FALSE;
 }
 
-void
+EAPI void
 ethumb_finished_callback_call(Ethumb *e, int result)
 {
    EINA_SAFETY_ON_NULL_RETURN(e);
@@ -1489,6 +1543,8 @@ ethumb_finished_callback_call(Ethumb *e, int result)
    if (e->finished_idler)
      ecore_idler_del(e->finished_idler);
    e->finished_idler = ecore_idler_add(_ethumb_finished_idler_cb, e);
+   e->plugin = NULL;
+   e->pdata = NULL;
 }
 
 EAPI Eina_Bool
@@ -1507,6 +1563,13 @@ ethumb_generate(Ethumb *e, Ethumb_Generate_Cb finished_cb, const void *data, Ein
 	ERR("thumbnail generation already in progress.");
 	return EINA_FALSE;
      }
+   if (e->pdata)
+     {
+        e->plugin->thumb_cancel(e, e->pdata);
+        e->pdata = NULL;
+        e->plugin = NULL;
+     }
+
    e->finished_cb = finished_cb;
    e->cb_data = (void *)data;
    e->cb_data_free = free_data;
@@ -1519,9 +1582,9 @@ ethumb_generate(Ethumb *e, Ethumb_Generate_Cb finished_cb, const void *data, Ein
      }
 
    r = _ethumb_plugin_generate(e);
+   fprintf(stderr, "ethumb generate: %i: %p\n", r, e->pdata);
    if (r)
      {
-        ethumb_finished_callback_call(e, r);
         return EINA_TRUE;
      }
 
@@ -1602,6 +1665,7 @@ ethumb_dup(const Ethumb *e)
 
    r->thumb_dir = eina_stringshare_ref(e->thumb_dir);
    r->category = eina_stringshare_ref(e->category);
+   r->src_hash = eina_stringshare_ref(e->src_hash);
    r->src_path = eina_stringshare_ref(e->src_path);
    r->src_key = eina_stringshare_ref(e->src_key);
    r->thumb_path = eina_stringshare_ref(e->thumb_path);
@@ -1657,6 +1721,8 @@ ethumb_dup(const Ethumb *e)
    r->cb_data = NULL;
    r->cb_data_free = NULL;
    r->cb_result = 0;
+   r->plugin = NULL;
+   r->pdata = NULL;
 
    return r;
 }
@@ -1708,8 +1774,6 @@ ethumb_key_cmp(const void *key1, __UNUSED__ int key1_length,
    const Ethumb *e1 = key1;
    const Ethumb *e2 = key2;
 
-   CMP_PARAM(thumb_dir);
-   CMP_PARAM(category);
    CMP_PARAM(thumb_dir);
    CMP_PARAM(category);
    CMP_PARAM(tw);

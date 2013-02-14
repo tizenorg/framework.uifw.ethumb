@@ -3,33 +3,35 @@
  *
  * Copyright (C) 2009 by ProFUSION embedded systems
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or (at your
- * option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,  but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the  GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
- * USA.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library;
+ * if not, see <http://www.gnu.org/licenses/>.
  *
  * @author Rafael Antognolli <antognolli@profusion.mobi>
- * @author Gustavo Sverzut Barbieri <barbieri@profusion.mobi>
  */
-#include <config.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <Ethumb_Client.h>
+
 #include <Eina.h>
 #include <Ecore_Getopt.h>
 #include <Ecore.h>
+#include <Ethumb_Client.h>
 
 const char *aspect_opt[] = { "keep", "ignore", "crop", NULL };
 const char *format_opt[] = { "png", "jpg", "eet", NULL };
@@ -157,11 +159,37 @@ _finished_thumb(void *data __UNUSED__, Ethumb_Client *client __UNUSED__, int id 
 }
 
 static void
-_connected(void *data, Ethumb_Client *c, Eina_Bool success)
+_exists(void *data, Ethumb_Client *c, __UNUSED__ Ethumb_Exists *thread, Eina_Bool exists)
 {
    struct options *opts = data;
    const char *thumb_path, *thumb_key;
    long id;
+
+   if (exists)
+     {
+        ethumb_client_thumb_path_get(c, &thumb_path, &thumb_key);
+        _thumb_report
+          ("EXISTS", opts->src_path, opts->src_key, thumb_path, thumb_key);
+        ecore_main_loop_quit();
+        return;
+     }
+
+   id = ethumb_client_generate(c, _finished_thumb, NULL, NULL);
+   if (id < 0)
+     {
+	fputs("ERROR: could not request thumbnail to be generated.\n", stderr);
+	ecore_main_loop_quit();
+	return;
+     }
+   printf("request id=%ld, file='%s', key='%s'\n",
+	  id, opts->src_path, opts->src_key ? opts->src_key : "");
+
+}
+
+static void
+_connected(void *data, Ethumb_Client *c, Eina_Bool success)
+{
+   struct options *opts = data;
 
    if (!success)
      {
@@ -196,24 +224,7 @@ _connected(void *data, Ethumb_Client *c, Eina_Bool success)
      }
 
    ethumb_client_thumb_path_set(c, opts->thumb_path, opts->thumb_key);
-   ethumb_client_thumb_path_get(c, &thumb_path, &thumb_key);
-   if (ethumb_client_thumb_exists(c))
-     {
-	_thumb_report
-	  ("EXISTS", opts->src_path, opts->src_key, thumb_path, thumb_key);
-	ecore_main_loop_quit();
-	return;
-     }
-
-   id = ethumb_client_generate(c, _finished_thumb, NULL, NULL);
-   if (id < 0)
-     {
-	fputs("ERROR: could not request thumbnail to be generated.\n", stderr);
-	ecore_main_loop_quit();
-	return;
-     }
-   printf("request id=%ld, file='%s', key='%s'\n",
-	  id, opts->src_path, opts->src_key ? opts->src_key : "");
+   ethumb_client_thumb_exists(c, _exists, opts);
 }
 
 int
@@ -221,7 +232,7 @@ main(int argc, char *argv[])
 {
    Ethumb_Client *c;
    Eina_Bool quit_option = 0;
-   const char *format_str, *aspect_str;
+   const char *format_str = NULL, *aspect_str;
    struct options opts = {
      {-1, -1, -1, -1},
      0, 0,
