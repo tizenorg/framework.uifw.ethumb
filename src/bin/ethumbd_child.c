@@ -3,23 +3,26 @@
  *
  * Copyright (C) 2009 by ProFUSION embedded systems
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or (at your
- * option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,  but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the  GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
- * USA.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library;
+ * if not, see <http://www.gnu.org/licenses/>.
  *
  * @author Rafael Antognolli <antognolli@profusion.mobi>
  */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -27,24 +30,25 @@
 #include <string.h>
 #include <errno.h>
 
+#include <Eina.h>
 #include <Ecore.h>
 #include <Ethumb.h>
-#include <Eina.h>
 
 #include "ethumbd_private.h"
 
-#define DBG(...) EINA_LOG_DBG(__VA_ARGS__)
-#define INF(...) EINA_LOG_INFO(__VA_ARGS__)
-#define WRN(...) EINA_LOG_WARN(__VA_ARGS__)
-#define ERR(...) EINA_LOG_ERR(__VA_ARGS__)
+#define DBG(...) EINA_LOG_DOM_DBG(_log_domain, __VA_ARGS__)
+#define INF(...) EINA_LOG_DOM_INFO(_log_domain, __VA_ARGS__)
+#define WRN(...) EINA_LOG_DOM_WARN(_log_domain, __VA_ARGS__)
+#define ERR(...) EINA_LOG_DOM_ERR(_log_domain, __VA_ARGS__)
 
 #define NETHUMBS 100
+
+static int _log_domain = -1;
 
 struct _Ethumbd_Child
 {
    Ecore_Fd_Handler *fd_handler;
    Ethumb *ethumbt[NETHUMBS];
-   int pipein, pipeout;
 };
 
 
@@ -122,13 +126,13 @@ _ec_write_safe(int fd, const void *buf, ssize_t size)
 }
 
 static int
-_ec_pipe_str_read(struct _Ethumbd_Child *ec, char **str)
+_ec_pipe_str_read(struct _Ethumbd_Child *ec __UNUSED__, char **str)
 {
    int size;
    int r;
    char buf[PATH_MAX];
 
-   r = _ec_read_safe(ec->pipein, &size, sizeof(size));
+   r = _ec_read_safe(STDIN_FILENO, &size, sizeof(size));
    if (!r)
      {
 	*str = NULL;
@@ -141,7 +145,7 @@ _ec_pipe_str_read(struct _Ethumbd_Child *ec, char **str)
 	return 1;
      }
 
-   r = _ec_read_safe(ec->pipein, buf, size);
+   r = _ec_read_safe(STDIN_FILENO, buf, size);
    if (!r)
      {
 	*str = NULL;
@@ -152,27 +156,10 @@ _ec_pipe_str_read(struct _Ethumbd_Child *ec, char **str)
    return 1;
 }
 
-static void
-_ec_pipe_str_write(struct _Ethumbd_Child *ec, const char *str)
-{
-   int size;
-
-   if (!str)
-     size = 0;
-   else
-     size = strlen(str) + 1;
-
-   _ec_write_safe(ec->pipeout, &size, sizeof(size));
-   _ec_write_safe(ec->pipeout, str, size);
-}
-
 static struct _Ethumbd_Child *
-_ec_new(int pipein, int pipeout)
+_ec_new(void)
 {
    struct _Ethumbd_Child *ec = calloc(1, sizeof(*ec));
-
-   ec->pipein = pipein;
-   ec->pipeout = pipeout;
 
    return ec;
 }
@@ -198,15 +185,15 @@ static int
 _ec_op_new(struct _Ethumbd_Child *ec)
 {
    int r;
-   int index;
+   int idx;
 
-   r = _ec_read_safe(ec->pipein, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
-   DBG("ethumbd new(). index = %d\n", index);
+   DBG("ethumbd new(). idx = %d", idx);
 
-   ec->ethumbt[index] = ethumb_new();
+   ec->ethumbt[idx] = ethumb_new();
    return 1;
 }
 
@@ -214,41 +201,59 @@ static int
 _ec_op_del(struct _Ethumbd_Child *ec)
 {
    int r;
-   int index;
+   int idx;
 
-   r = _ec_read_safe(ec->pipein, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
-   DBG("ethumbd del(). index = %d\n", index);
+   DBG("ethumbd del(). idx = %d", idx);
 
-   ethumb_free(ec->ethumbt[index]);
-   ec->ethumbt[index] = NULL;
+   ethumb_free(ec->ethumbt[idx]);
+   ec->ethumbt[idx] = NULL;
    return 1;
 }
 
 static void
-_ec_op_generated_cb(void *data, Ethumb *e, Eina_Bool success)
+_ec_op_generated_cb(void *data __UNUSED__, Ethumb *e, Eina_Bool success)
 {
-   struct _Ethumbd_Child *ec = data;
    const char *thumb_path, *thumb_key;
+   int size_path, size_key, size_cmd;
 
-   DBG("thumb generated!\n");
+   DBG("thumb generated (%i)!", success);
    ethumb_thumb_path_get(e, &thumb_path, &thumb_key);
-   _ec_write_safe(ec->pipeout, &success, sizeof(success));
 
-   _ec_pipe_str_write(ec, thumb_path);
-   _ec_pipe_str_write(ec, thumb_key);
+   if (!thumb_path)
+     size_path = 0;
+   else
+     size_path = strlen(thumb_path) + 1;
+
+   if (!thumb_key)
+     size_key = 0;
+   else
+     size_key = strlen(thumb_key) + 1;
+
+   size_cmd = sizeof(success) + sizeof(size_path) + size_path +
+      sizeof(size_key) + size_key;
+
+   _ec_write_safe(STDOUT_FILENO, &size_cmd, sizeof(size_cmd));
+   _ec_write_safe(STDOUT_FILENO, &success, sizeof(success));
+
+   _ec_write_safe(STDOUT_FILENO, &size_path, sizeof(size_path));
+   _ec_write_safe(STDOUT_FILENO, thumb_path, size_path);
+
+   _ec_write_safe(STDOUT_FILENO, &size_key, sizeof(size_key));
+   _ec_write_safe(STDOUT_FILENO, thumb_key, size_key);
 }
 
 static int
 _ec_op_generate(struct _Ethumbd_Child *ec)
 {
-   int index;
+   int idx;
    char *path, *key, *thumb_path, *thumb_key;
    int r;
 
-   r = _ec_read_safe(ec->pipein, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
@@ -265,9 +270,17 @@ _ec_op_generate(struct _Ethumbd_Child *ec)
    if (!r)
      return 0;
 
-   ethumb_file_set(ec->ethumbt[index], path, key);
-   ethumb_thumb_path_set(ec->ethumbt[index], thumb_path, thumb_key);
-   ethumb_generate(ec->ethumbt[index], _ec_op_generated_cb, ec, NULL);
+   ethumb_file_set(ec->ethumbt[idx], path, key);
+   ethumb_thumb_path_set(ec->ethumbt[idx], thumb_path, thumb_key);
+
+   if (ethumb_exists(ec->ethumbt[idx]))
+     {
+        _ec_op_generated_cb(ec, ec->ethumbt[idx], EINA_TRUE);
+     }
+   else
+     {
+        ethumb_generate(ec->ethumbt[idx], _ec_op_generated_cb, ec, NULL);
+     }
 
    free(path);
    free(key);
@@ -278,120 +291,135 @@ _ec_op_generate(struct _Ethumbd_Child *ec)
 }
 
 static int
-_ec_fdo_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_fdo_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_thumb_fdo_set(e, value);
-   DBG("fdo = %d\n", value);
+   DBG("fdo = %d", value);
 
    return 1;
 }
 
 static int
-_ec_size_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_size_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int w, h;
    int type;
 
-   r = _ec_read_safe(ec->pipein, &w, sizeof(w));
+   r = _ec_read_safe(STDIN_FILENO, &w, sizeof(w));
    if (!r)
      return 0;
-   r = _ec_read_safe(ec->pipein, &type, sizeof(type));
+   r = _ec_read_safe(STDIN_FILENO, &type, sizeof(type));
    if (!r)
      return 0;
-   r = _ec_read_safe(ec->pipein, &h, sizeof(h));
+   r = _ec_read_safe(STDIN_FILENO, &h, sizeof(h));
    if (!r)
      return 0;
    ethumb_thumb_size_set(e, w, h);
-   DBG("size = %dx%d\n", w, h);
+   DBG("size = %dx%d", w, h);
 
    return 1;
 }
 
 static int
-_ec_format_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_format_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_thumb_format_set(e, value);
-   DBG("format = %d\n", value);
+   DBG("format = %d", value);
 
    return 1;
 }
 
 static int
-_ec_aspect_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_aspect_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_thumb_aspect_set(e, value);
-   DBG("aspect = %d\n", value);
+   DBG("aspect = %d", value);
 
    return 1;
 }
 
 static int
-_ec_crop_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_orientation_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
+{
+   int r;
+   int value;
+
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
+   if (!r)
+     return 0;
+   ethumb_thumb_orientation_set(e, value);
+   DBG("orientation = %d", value);
+
+   return 1;
+}
+
+static int
+_ec_crop_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float x, y;
    int type;
 
-   r = _ec_read_safe(ec->pipein, &x, sizeof(x));
+   r = _ec_read_safe(STDIN_FILENO, &x, sizeof(x));
    if (!r)
      return 0;
-   r = _ec_read_safe(ec->pipein, &type, sizeof(type));
+   r = _ec_read_safe(STDIN_FILENO, &type, sizeof(type));
    if (!r)
      return 0;
-   r = _ec_read_safe(ec->pipein, &y, sizeof(y));
+   r = _ec_read_safe(STDIN_FILENO, &y, sizeof(y));
    if (!r)
      return 0;
    ethumb_thumb_crop_align_set(e, x, y);
-   DBG("crop = %fx%f\n", x, y);
+   DBG("crop = %fx%f", x, y);
 
    return 1;
 }
 
 static int
-_ec_quality_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_quality_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_thumb_quality_set(e, value);
-   DBG("quality = %d\n", value);
+   DBG("quality = %d", value);
 
    return 1;
 }
 
 static int
-_ec_compress_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_compress_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_thumb_compress_set(e, value);
-   DBG("compress = %d\n", value);
+   DBG("compress = %d", value);
 
    return 1;
 }
@@ -406,19 +434,19 @@ _ec_frame_set(struct _Ethumbd_Child *ec, Ethumb *e)
    r = _ec_pipe_str_read(ec, &theme_file);
    if (!r)
      return 0;
-   r = _ec_read_safe(ec->pipein, &type, sizeof(type));
+   r = _ec_read_safe(STDIN_FILENO, &type, sizeof(type));
    if (!r)
      return 0;
    r = _ec_pipe_str_read(ec, &group);
    if (!r)
      return 0;
-   r = _ec_read_safe(ec->pipein, &type, sizeof(type));
+   r = _ec_read_safe(STDIN_FILENO, &type, sizeof(type));
    if (!r)
      return 0;
    r = _ec_pipe_str_read(ec, &swallow);
    if (!r)
      return 0;
-   DBG("frame = %s:%s:%s\n", theme_file, group, swallow);
+   DBG("frame = %s:%s:%s", theme_file, group, swallow);
    ethumb_frame_set(e, theme_file, group, swallow);
    free(theme_file);
    free(group);
@@ -437,7 +465,7 @@ _ec_directory_set(struct _Ethumbd_Child *ec, Ethumb *e)
    if (!r)
      return 0;
    ethumb_thumb_dir_path_set(e, directory);
-   DBG("directory = %s\n", directory);
+   DBG("directory = %s", directory);
    free(directory);
 
    return 1;
@@ -453,108 +481,108 @@ _ec_category_set(struct _Ethumbd_Child *ec, Ethumb *e)
    if (!r)
      return 0;
    ethumb_thumb_category_set(e, category);
-   DBG("category = %s\n", category);
+   DBG("category = %s", category);
    free(category);
 
    return 1;
 }
 
 static int
-_ec_video_time_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_time_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_video_time_set(e, value);
-   DBG("video_time = %f\n", value);
+   DBG("video_time = %f", value);
 
    return 1;
 }
 
 static int
-_ec_video_start_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_start_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_video_start_set(e, value);
-   DBG("video_start = %f\n", value);
+   DBG("video_start = %f", value);
 
    return 1;
 }
 
 static int
-_ec_video_interval_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_interval_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    float value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_video_interval_set(e, value);
-   DBG("video_interval = %f\n", value);
+   DBG("video_interval = %f", value);
 
    return 1;
 }
 
 static int
-_ec_video_ntimes_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_ntimes_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_video_ntimes_set(e, value);
-   DBG("video_ntimes = %d\n", value);
+   DBG("video_ntimes = %d", value);
 
    return 1;
 }
 
 static int
-_ec_video_fps_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_video_fps_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_video_fps_set(e, value);
-   DBG("video_fps = %d\n", value);
+   DBG("video_fps = %d", value);
 
    return 1;
 }
 
 static int
-_ec_document_page_set(struct _Ethumbd_Child *ec, Ethumb *e)
+_ec_document_page_set(struct _Ethumbd_Child *ec __UNUSED__, Ethumb *e)
 {
    int r;
    int value;
 
-   r = _ec_read_safe(ec->pipein, &value, sizeof(value));
+   r = _ec_read_safe(STDIN_FILENO, &value, sizeof(value));
    if (!r)
      return 0;
    ethumb_document_page_set(e, value);
-   DBG("document_page = %d\n", value);
+   DBG("document_page = %d", value);
 
    return 1;
 }
 
 static void
-_ec_setup_process(struct _Ethumbd_Child *ec, int index, int type)
+_ec_setup_process(struct _Ethumbd_Child *ec, int idx, int type)
 {
    Ethumb *e;
 
-   e = ec->ethumbt[index];
+   e = ec->ethumbt[idx];
 
    switch (type)
      {
@@ -569,6 +597,9 @@ _ec_setup_process(struct _Ethumbd_Child *ec, int index, int type)
 	 break;
       case ETHUMBD_ASPECT:
 	 _ec_aspect_set(ec, e);
+	 break;
+      case ETHUMBD_ORIENTATION:
+	 _ec_orientation_set(ec, e);
 	 break;
       case ETHUMBD_CROP_X:
 	 _ec_crop_set(ec, e);
@@ -607,7 +638,7 @@ _ec_setup_process(struct _Ethumbd_Child *ec, int index, int type)
 	 _ec_document_page_set(ec, e);
 	 break;
       default:
-	 ERR("wrong type!\n");
+	 ERR("wrong type!");
      }
 }
 
@@ -615,20 +646,20 @@ static int
 _ec_op_setup(struct _Ethumbd_Child *ec)
 {
    int r;
-   int index;
+   int idx;
    int type;
 
-   r = _ec_read_safe(ec->pipein, &index, sizeof(index));
+   r = _ec_read_safe(STDIN_FILENO, &idx, sizeof(idx));
    if (!r)
      return 0;
 
-   r = _ec_read_safe(ec->pipein, &type, sizeof(type));
+   r = _ec_read_safe(STDIN_FILENO, &type, sizeof(type));
    if (!r)
      return 0;
    while (type != ETHUMBD_SETUP_FINISHED)
      {
-	_ec_setup_process(ec, index, type);
-	r = _ec_read_safe(ec->pipein, &type, sizeof(type));
+	_ec_setup_process(ec, idx, type);
+	r = _ec_read_safe(STDIN_FILENO, &type, sizeof(type));
 	if (!r)
 	  return 0;
      }
@@ -636,7 +667,7 @@ _ec_op_setup(struct _Ethumbd_Child *ec)
    return 1;
 }
 
-static int
+static Eina_Bool
 _ec_fd_handler(void *data, Ecore_Fd_Handler *fd_handler)
 {
    struct _Ethumbd_Child *ec = data;
@@ -645,24 +676,23 @@ _ec_fd_handler(void *data, Ecore_Fd_Handler *fd_handler)
 
    if (ecore_main_fd_handler_active_get(fd_handler, ECORE_FD_ERROR))
      {
-	ERR("error on pipein! child exiting...\n");
+	ERR("error on pipein! child exiting...");
 	ec->fd_handler = NULL;
 	ecore_main_loop_quit();
 	return 0;
      }
 
-   r = _ec_read_safe(ec->pipein, &op_id, sizeof(op_id));
+   r = _ec_read_safe(STDIN_FILENO, &op_id, sizeof(op_id));
    if (!r)
      {
-	DBG("ethumbd exited! child exiting...\n");
+	DBG("ethumbd exited! child exiting...");
 	ec->fd_handler = NULL;
 	ecore_main_loop_quit();
 	return 0;
      }
 
-   DBG("received op: %d\n", op_id);
+   DBG("received op: %d", op_id);
 
-   r = 1;
    switch (op_id)
      {
       case ETHUMBD_OP_NEW:
@@ -678,13 +708,13 @@ _ec_fd_handler(void *data, Ecore_Fd_Handler *fd_handler)
 	 r = _ec_op_del(ec);
 	 break;
       default:
-	 ERR("invalid operation: %d\n", op_id);
+	 ERR("invalid operation: %d", op_id);
 	 r = 0;
      }
 
    if (!r)
      {
-	ERR("ethumbd exited! child exiting...\n");
+	ERR("ethumbd exited! child exiting...");
 	ec->fd_handler = NULL;
 	ecore_main_loop_quit();
      }
@@ -696,26 +726,45 @@ static void
 _ec_setup(struct _Ethumbd_Child *ec)
 {
    ec->fd_handler = ecore_main_fd_handler_add(
-      ec->pipein, ECORE_FD_READ | ECORE_FD_ERROR,
+      STDIN_FILENO, ECORE_FD_READ | ECORE_FD_ERROR,
       _ec_fd_handler, ec, NULL, NULL);
 }
 
-void
-ethumbd_child_start(int pipein, int pipeout)
+int
+main(int argc __UNUSED__, const char *argv[] __UNUSED__)
 {
    struct _Ethumbd_Child *ec;
 
    ethumb_init();
 
-   ec = _ec_new(pipein, pipeout);
+   if (_log_domain < 0)
+     {
+	_log_domain = eina_log_domain_register("ethumbd_child", NULL);
+
+	if (_log_domain < 0)
+	  {
+	     EINA_LOG_CRIT("could not register log domain 'ethumbd_child'");
+	     ethumb_shutdown();
+	     return 1;
+	  }
+     }
+
+   ec = _ec_new();
 
    _ec_setup(ec);
 
-   DBG("child started!\n");
+   DBG("child started!");
    ecore_main_loop_begin();
-   DBG("child finishing.\n");
+   DBG("child finishing.");
 
    _ec_free(ec);
 
+   if (_log_domain >= 0)
+     {
+	eina_log_domain_unregister(_log_domain);
+	_log_domain = -1;
+     }
    ethumb_shutdown();
+
+   return 0;
 }
