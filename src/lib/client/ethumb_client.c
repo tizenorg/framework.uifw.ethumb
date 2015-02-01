@@ -2420,13 +2420,15 @@ _ethumb_client_thumb_generate_idler(void *data __UNUSED__)
              async->error(async->client, (void *)async->data);
              async->client->ethumb = tmp;
              _ethumb_client_async_free(async);
+             async = NULL;
           }
         else
           {
              async->client->ethumb = tmp;
           }
 
-        pending = eina_list_append(pending, async);
+        if (async)
+          pending = eina_list_append(pending, async);
 
         if (ecore_time_get() - ecore_loop_time_get() > ecore_animator_frametime_get() * 0.5)
           return EINA_TRUE;
