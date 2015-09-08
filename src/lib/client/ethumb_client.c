@@ -277,7 +277,8 @@ _ethumb_client_free(Ethumb_Client *client)
         eina_stringshare_del(pending->thumb);
         eina_stringshare_del(pending->thumb_key);
         dbus_pending_call_cancel(pending->pending_call);
-        dbus_pending_call_unref(pending->pending_call);
+        if (pending->pending_call)
+          dbus_pending_call_unref(pending->pending_call);
         if (pending->free_data)
           pending->free_data(pending->data);
         free(pending);
@@ -299,7 +300,8 @@ _ethumb_client_free(Ethumb_Client *client)
      {
         struct _ethumb_pending_remove *pending = data;
         dbus_pending_call_cancel(pending->pending_call);
-        dbus_pending_call_unref(pending->pending_call);
+        if (pending->pending_call)
+          dbus_pending_call_unref(pending->pending_call);
         if (pending->free_data)
           pending->free_data(pending->data);
         free(pending);
@@ -308,7 +310,8 @@ _ethumb_client_free(Ethumb_Client *client)
    if (client->pending_clear)
      {
         dbus_pending_call_cancel(client->pending_clear);
-        dbus_pending_call_unref(client->pending_clear);
+        if (client->pending_clear)
+          dbus_pending_call_unref(client->pending_clear);
      }
 
 end_connection:
@@ -1332,7 +1335,8 @@ ethumb_client_generate_cancel(Ethumb_Client *client, int id, Ethumb_Client_Gener
         eina_stringshare_del(pending_add->thumb);
         eina_stringshare_del(pending_add->thumb_key);
         dbus_pending_call_cancel(pending_add->pending_call);
-        dbus_pending_call_unref(pending_add->pending_call);
+        if (pending_add->pending_call)
+          dbus_pending_call_unref(pending_add->pending_call);
         if (pending_add->free_data)
           pending_add->free_data(pending_add->data);
         free(pending_add);
@@ -1408,7 +1412,8 @@ ethumb_client_generate_cancel_all(Ethumb_Client *client)
         eina_stringshare_del(pending->thumb);
         eina_stringshare_del(pending->thumb_key);
         dbus_pending_call_cancel(pending->pending_call);
-        dbus_pending_call_unref(pending->pending_call);
+        if (pending->pending_call)
+          dbus_pending_call_unref(pending->pending_call);
         if (pending->free_data)
           pending->free_data(pending->data);
         free(pending);
@@ -2420,13 +2425,15 @@ _ethumb_client_thumb_generate_idler(void *data __UNUSED__)
              async->error(async->client, (void *)async->data);
              async->client->ethumb = tmp;
              _ethumb_client_async_free(async);
+             async = NULL;
           }
         else
           {
              async->client->ethumb = tmp;
           }
 
-        pending = eina_list_append(pending, async);
+        if (async)
+          pending = eina_list_append(pending, async);
 
         if (ecore_time_get() - ecore_loop_time_get() > ecore_animator_frametime_get() * 0.5)
           return EINA_TRUE;

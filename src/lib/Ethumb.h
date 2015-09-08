@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define ETHUMB_VERSION_MAJOR 1
-#define ETHUMB_VERSION_MINOR 0
+#define ETHUMB_VERSION_MINOR 8
    
    typedef struct _Ethumb_Version
      {
@@ -47,12 +47,17 @@ extern "C" {
    EAPI extern Ethumb_Version *ethumb_version;
    
 /**
- * @defgroup Ethumb Ethumb
+ * @internal
+ * @defgroup Ethumb_Group Ethumb
+ * @ingroup EFL_Group
  *
  * @{
  */
+
 /**
- * @defgroup Ethumb_Basics Ethumb Basics
+ * @internal
+ * @defgroup Ethumb_Basics_Group Ethumb Basics
+ * @ingroup Ethumb_Group
  *
  * Functions that all users must know of to use Ethumb.
  *
@@ -81,12 +86,28 @@ EAPI int ethumb_shutdown(void);
 EAPI Ethumb * ethumb_new(void) EINA_MALLOC EINA_WARN_UNUSED_RESULT;
 EAPI void ethumb_free(Ethumb *e);
 
+EAPI Eina_Bool ethumb_file_set(Ethumb *e, const char *path, const char *key) EINA_ARG_NONNULL(1, 2);
+EAPI void      ethumb_file_get(const Ethumb *e, const char **path, const char **key) EINA_ARG_NONNULL(1);
+EAPI void      ethumb_file_free(Ethumb *e) EINA_ARG_NONNULL(1);
+
+EAPI Eina_Bool ethumb_generate(Ethumb *e, Ethumb_Generate_Cb finished_cb, const void *data, Eina_Free_Cb free_data) EINA_ARG_NONNULL(1, 2);
+EAPI Eina_Bool ethumb_exists(Ethumb *e) EINA_WARN_UNUSED_RESULT EINA_ARG_NONNULL(1) EINA_PURE;
+
+EAPI Ethumb *ethumb_dup(const Ethumb *e) EINA_ARG_NONNULL(1);
+EAPI Eina_Bool ethumb_cmp(const Ethumb *e1, const Ethumb *e2) EINA_ARG_NONNULL(1, 2) EINA_WARN_UNUSED_RESULT EINA_PURE;
+EAPI int ethumb_hash(const void *key, int key_length) EINA_ARG_NONNULL(1) EINA_WARN_UNUSED_RESULT EINA_PURE;
+EAPI int ethumb_key_cmp(const void *key1, int key1_length,
+			const void *key2, int key2_length) EINA_ARG_NONNULL(1, 3) EINA_WARN_UNUSED_RESULT EINA_PURE;
+EAPI unsigned int ethumb_length(const void *key) EINA_PURE EINA_WARN_UNUSED_RESULT;
+
 /**
  * @}
  */
 
 /**
- * @defgroup Ethumb_Setup Ethumb Fine Tune Setup
+ * @internal
+ * @defgroup Ethumb_Setup_Group Ethumb Fine Tune Setup
+ * @ingroup Ethumb_Group
  *
  * How to fine tune thumbnail generation, setting size, aspect,
  * frames, quality and so on.
@@ -108,12 +129,18 @@ EAPI void         ethumb_thumb_path_get(Ethumb *e, const char **path, const char
 EAPI void         ethumb_thumb_hash(Ethumb *e) EINA_ARG_NONNULL(1);
 EAPI void         ethumb_thumb_hash_copy(Ethumb *dst, const Ethumb *src) EINA_ARG_NONNULL(1, 2);
 
+/**
+ * @brief Enumeration of Ethumb thumb FDO size
+ */
 typedef enum _Ethumb_Thumb_FDO_Size
 {
   ETHUMB_THUMB_NORMAL, /**< 128x128 as defined by FreeDesktop.Org standard */
   ETHUMB_THUMB_LARGE   /**< 256x256 as defined by FreeDesktop.Org standard */
 } Ethumb_Thumb_FDO_Size;
 
+/**
+ * @brief Enumeration of Ethumb thumb format type
+ */
 typedef enum _Ethumb_Thumb_Format
 {
    ETHUMB_THUMB_FDO,   /**< PNG as defined by FreeDesktop.Org standard */
@@ -121,6 +148,9 @@ typedef enum _Ethumb_Thumb_Format
    ETHUMB_THUMB_EET    /**< EFL's own storage system, supports key parameter */
 } Ethumb_Thumb_Format;
 
+/**
+ * @brief Enumeration of Ethumb thumb aspect type
+ */
 typedef enum _Ethumb_Thumb_Aspect
 {
   ETHUMB_THUMB_KEEP_ASPECT, /**< keep original proportion between width and height */
@@ -128,6 +158,9 @@ typedef enum _Ethumb_Thumb_Aspect
   ETHUMB_THUMB_CROP /**< keep aspect but crop (cut) the largest dimension */
 } Ethumb_Thumb_Aspect;
 
+/**
+ * @brief Enumeration of Ethumb orientation type
+ */
 typedef enum _Ethumb_Thumb_Orientation
 {
   ETHUMB_THUMB_ORIENT_NONE,     /**< keep orientation as pixel data is */
@@ -179,28 +212,6 @@ EAPI unsigned int ethumb_video_fps_get(const Ethumb *e) EINA_WARN_UNUSED_RESULT 
 EAPI void         ethumb_document_page_set(Ethumb *e, unsigned int page) EINA_ARG_NONNULL(1);
 EAPI unsigned int ethumb_document_page_get(const Ethumb *e) EINA_WARN_UNUSED_RESULT EINA_ARG_NONNULL(1) EINA_PURE;
 /**
- * @}
- */
-
-/**
- * @addtogroup Ethumb_Basics Ethumb Basics
- * @{
- */
-EAPI Eina_Bool ethumb_file_set(Ethumb *e, const char *path, const char *key) EINA_ARG_NONNULL(1, 2);
-EAPI void      ethumb_file_get(const Ethumb *e, const char **path, const char **key) EINA_ARG_NONNULL(1);
-EAPI void      ethumb_file_free(Ethumb *e) EINA_ARG_NONNULL(1);
-
-EAPI Eina_Bool ethumb_generate(Ethumb *e, Ethumb_Generate_Cb finished_cb, const void *data, Eina_Free_Cb free_data) EINA_ARG_NONNULL(1, 2);
-EAPI Eina_Bool ethumb_exists(Ethumb *e) EINA_WARN_UNUSED_RESULT EINA_ARG_NONNULL(1) EINA_PURE;
-
-EAPI Ethumb *ethumb_dup(const Ethumb *e) EINA_ARG_NONNULL(1);
-EAPI Eina_Bool ethumb_cmp(const Ethumb *e1, const Ethumb *e2) EINA_ARG_NONNULL(1, 2) EINA_WARN_UNUSED_RESULT EINA_PURE;
-EAPI int ethumb_hash(const void *key, int key_length) EINA_ARG_NONNULL(1) EINA_WARN_UNUSED_RESULT EINA_PURE;
-EAPI int ethumb_key_cmp(const void *key1, int key1_length,
-			const void *key2, int key2_length) EINA_ARG_NONNULL(1, 3) EINA_WARN_UNUSED_RESULT EINA_PURE;
-EAPI unsigned int ethumb_length(const void *key) EINA_PURE EINA_WARN_UNUSED_RESULT;
-
-  /**
  * @}
  */
 

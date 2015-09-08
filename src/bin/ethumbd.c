@@ -773,7 +773,7 @@ _ethumb_table_append(Ethumbd *ed)
 	q->max_count = new_max;
      }
 
-   for (i = 0; i < q->max_count; i++)
+   for (i = 0; i < (q->max_count - 1); i++)
      {
 	if (!q->table[i].used)
 	  break;

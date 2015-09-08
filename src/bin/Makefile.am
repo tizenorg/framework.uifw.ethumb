@@ -51,4 +51,10 @@ $(top_builddir)/src/lib/libethumb.la \
 @ECORE_LIBS@ \
 @EINA_LIBS@
 
+### TIZEN_ONLY(20150404): Apply ASLR to executable files.
+ethumbd_LDFLAGS = -pie
+ethumbd_CFLAGS = -fPIE
+ethumbd_slave_LDFLAGS = -pie
+ethumbd_slave_CFLAGS = -fPIE
+
 endif

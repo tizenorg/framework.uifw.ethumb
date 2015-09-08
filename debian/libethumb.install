@@ -1,4 +1,0 @@
-debian/tmp/usr/lib/libethumb_client.so*
-debian/tmp/usr/lib/libethumb*so*
-debian/tmp/usr/share/dbus-1/*
-debian/tmp/usr/share/ethumb/data/*
